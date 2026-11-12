@@ -1,0 +1,48 @@
+[
+  {
+    "id": "ca810be7-75c2-4400-832d-803b91fbcaba",
+    "host_key": "maize",
+    "organism_type": "crop",
+    "title": "Agricultural_Veterinary_Disease_Assessment_Report.pdf",
+    "condition_label": "",
+    "signs": "",
+    "notes": "",
+    "filename": "Agricultural & Veterinary Disease Assessment Report.pdf",
+    "content_type": "application/pdf",
+    "stored_name": "5d9f4ba01a634c81bb3133fce42e3dd2_Agricultural_Veterinary_Disease_Assessment_Report.pdf",
+    "size_bytes": 1621046,
+    "created_at": "2026-10-22T11:15:49.152642+00:00",
+    "use_for_ml": true
+  },
+  {
+    "id": "e85e45d4-f693-4c8f-8b2e-49ad2a30363f",
+    "host_key": "maize",
+    "organism_type": "crop",
+    "title": "Agricultural_Veterinary_Disease_Assessment_Report.pdf",
+    "condition_label": "",
+    "signs": "",
+    "notes": "",
+    "filename": "Agricultural & Veterinary Disease Assessment Report.pdf",
+    "content_type": "application/pdf",
+    "stored_name": "cefb02e8b53c46db8d67676f8c47930c_Agricultural_Veterinary_Disease_Assessment_Report.pdf",
+    "size_bytes": 1621046,
+    "created_at": "2026-10-22T11:29:04.975607+00:00",
+    "use_for_ml": true
+  },
+  {
+    "id": "860877cd-c246-4837-b98b-8ea38ddce2d6",
+    "host_key": "maize",
+    "organism_type": "crop",
+    "title": "Armyworm",
+    "condition_label": "Armyworm",
+    "signs": "",
+    "notes": "",
+    "filename": "African_Livestock_and_Crop_Health_Guide.pdf",
+    "content_type": "application/pdf",
+    "stored_name": "7adb50fed15f403daacc9316412a5438_African_Livestock_and_Crop_Health_Guide.pdf",
+    "size_bytes": 193610,
+    "created_at": "2026-10-27T10:45:51.441243+00:00",
+    "use_for_ml": true,
+    "procedure_id": "20f88893-0a82-47ce-9e15-70056cefc847"
+  }
+]

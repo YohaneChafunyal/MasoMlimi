@@ -1,0 +1,3832 @@
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:uuid/uuid.dart';
+import 'theme.dart';
+
+
+const moreCropKeys = ['maize', 'cassava', 'tomato', 'beans', 'groundnuts', 'rice', 'sorghum', 'millet', 'sweet_potato', 'banana', 'onion', 'cabbage'];
+const moreAnimalKeys = ['chicken', 'goats', 'cattle', 'pigs', 'sheep', 'ducks'];
+
+
+
+
+
+/// File-backed offline store (survives app restarts; never wiped by empty API).
+class OfflineCache {
+  static Future<Directory> _dir() async {
+    final root = await getApplicationDocumentsDirectory();
+    final d = Directory('${root.path}/masomlimi_offline');
+    if (!await d.exists()) await d.create(recursive: true);
+    return d;
+  }
+
+  static Future<File> _file(String name) async {
+    final d = await _dir();
+    return File('${d.path}/$name');
+  }
+
+  static Future<void> _writeList(String name, List items) async {
+    if (items.isEmpty) return; // never wipe good data with empty
+    final f = await _file(name);
+    await f.writeAsString(jsonEncode(items), flush: true);
+    // mirror small prefs key for quick presence check
+    final p = await SharedPreferences.getInstance();
+    await p.setString('has_$name', '1');
+    await p.setString('at_$name', DateTime.now().toIso8601String());
+  }
+
+  static Future<List> _readList(String name) async {
+    try {
+      final f = await _file(name);
+      if (!await f.exists()) {
+        // migrate from old SharedPreferences if any
+        final p = await SharedPreferences.getInstance();
+        final legacy = p.getString('cache_$name') ?? p.getString(name);
+        if (legacy != null && legacy.isNotEmpty) {
+          final data = jsonDecode(legacy);
+          if (data is List && data.isNotEmpty) {
+            await _writeList(name, data);
+            return data;
+          }
+        }
+        return [];
+      }
+      final data = jsonDecode(await f.readAsString());
+      return data is List ? data : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<void> saveProcedures(List items) async => _writeList('procedures.json', items);
+  static Future<List> loadProcedures() async => _readList('procedures.json');
+
+  static Future<void> saveLibrary(List items) async => _writeList('library.json', items);
+  static Future<List> loadLibrary() async => _readList('library.json');
+
+  static Future<void> saveExperts(List items) async => _writeList('experts.json', items);
+  static Future<List> loadExperts() async => _readList('experts.json');
+
+  static Future<void> saveAlerts(List items) async => _writeList('alerts.json', items);
+  static Future<List> loadAlerts() async => _readList('alerts.json');
+
+  static Future<void> saveScanHistory(List items) async => _writeList('scan_history.json', items);
+  static Future<List> loadScanHistory() async => _readList('scan_history.json');
+
+  static Future<void> appendScanEpisode(Map episode) async {
+    final all = List.from(await loadScanHistory());
+    all.add(episode);
+    // keep last 200
+    final trimmed = all.length > 200 ? all.sublist(all.length - 200) : all;
+    await saveScanHistory(trimmed);
+  }
+
+  static Future<List> historyForHost(String deviceId, String hostKey) async {
+    final hk = normalizeHost(hostKey);
+    final all = await loadScanHistory();
+    return all.where((e) {
+      if (e is! Map) return false;
+      if (deviceId.isNotEmpty && '${e['device_id']}' != deviceId) return false;
+      return normalizeHost('${e['host_key']}') == hk;
+    }).toList().reversed.toList();
+  }
+
+  static Future<void> saveChat(String deviceId, String expertId, List messages) async {
+    final sorted = dedupeMessages(messages);
+    final safe = '${deviceId}_$expertId'.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    await _writeList('chat_$safe.json', sorted);
+  }
+
+  static Future<List> loadChat(String deviceId, String expertId) async {
+    final safe = '${deviceId}_$expertId'.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    return _sortMessages(await _readList('chat_$safe.json'));
+  }
+
+  static List _sortMessages(List messages) {
+    final copy = List.from(messages);
+    copy.sort((a, b) {
+      final at = a is Map ? '${a['at'] ?? ''}' : '';
+      final bt = b is Map ? '${b['at'] ?? ''}' : '';
+      final c = at.compareTo(bt);
+      if (c != 0) return c;
+      return '${a is Map ? a['id'] : ''}'.compareTo('${b is Map ? b['id'] : ''}');
+    });
+    return copy;
+  }
+
+  static Future<void> appendOutgoingChat(String deviceId, String expertId, Map msg) async {
+    final list = await loadChat(deviceId, expertId);
+    final id = '${msg['id'] ?? ''}';
+    if (id.isNotEmpty) {
+      list.removeWhere((m) => m is Map && '${m['id']}' == id);
+    }
+    list.add(msg);
+    await saveChat(deviceId, expertId, list);
+  }
+
+  static Future<List> loadOutbox() async => _readList('outbox.json');
+
+  static Future<void> saveOutbox(List items) async {
+    // outbox MAY be empty after successful flush
+    final f = await _file('outbox.json');
+    await f.writeAsString(jsonEncode(items), flush: true);
+  }
+
+  static Future<void> enqueueOutbox(Map item) async {
+    final box = await loadOutbox();
+    item['queued_at'] = item['queued_at'] ?? DateTime.now().toIso8601String();
+    box.add(item);
+    box.sort((a, b) {
+      final at = a is Map ? '${a['queued_at'] ?? ''}' : '';
+      final bt = b is Map ? '${b['queued_at'] ?? ''}' : '';
+      return at.compareTo(bt);
+    });
+    final f = await _file('outbox.json');
+    await f.writeAsString(jsonEncode(box), flush: true);
+  }
+
+  static bool _outboxFlushing = false;
+
+  static Future<int> flushOutbox(String apiBase) async {
+    if (_outboxFlushing) return 0;
+    _outboxFlushing = true;
+    try {
+    final box = await loadOutbox();
+    if (box.isEmpty) return 0;
+    final remain = <dynamic>[];
+    var sent = 0;
+    for (final raw in box) {
+      if (raw is! Map) continue;
+      final item = Map<String, dynamic>.from(raw);
+      try {
+        final type = '${item['type'] ?? 'text'}';
+        if (type == 'audio_note' && item['file_path'] != null) {
+          final path = '${item['file_path']}';
+          final file = File(path);
+          if (!await file.exists()) {
+            remain.add(item);
+            continue;
+          }
+          final len = await file.length();
+          if (len < 500) {
+            // drop empty recordings
+            sent++;
+            continue;
+          }
+          final req = http.MultipartRequest('POST', Uri.parse('$apiBase/v1/chat/voice'));
+          req.fields['device_id'] = '${item['device_id']}';
+          req.fields['expert_id'] = '${item['expert_id']}';
+          req.fields['sender'] = '${item['sender'] ?? 'farmer'}';
+          req.fields['client_id'] = '${item['client_id'] ?? item['id'] ?? ''}';
+          final fname = path.split(Platform.pathSeparator).last;
+          req.files.add(await http.MultipartFile.fromPath('audio', path, filename: fname));
+          final streamed = await req.send().timeout(const Duration(seconds: 45));
+          final body = await streamed.stream.bytesToString();
+          if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
+            // Keep a playable copy named like the server file
+            try {
+              final match = RegExp(r'\[voice_note:([^\]]+)\]').firstMatch(body);
+              if (match != null) {
+                final name = match.group(1)!;
+                final dir = await getApplicationDocumentsDirectory();
+                final cache = File('${dir.path}/masomlimi_offline/voice_cache/$name');
+                await cache.parent.create(recursive: true);
+                await file.copy(cache.path);
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('voice_local_$name', cache.path);
+              }
+            } catch (_) {}
+            sent++;
+            continue;
+          }
+          remain.add(item);
+        } else {
+          final res = await http
+              .post(
+                Uri.parse('$apiBase/v1/chat'),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'device_id': item['device_id'],
+                  'expert_id': item['expert_id'],
+                  'text': item['text'],
+                  'sender': item['sender'] ?? 'farmer',
+                  'msg_type': item['msg_type'] ?? 'text',
+                }),
+              )
+              .timeout(const Duration(seconds: 15));
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            sent++;
+            continue;
+          }
+          remain.add(item);
+        }
+      } catch (_) {
+        remain.add(item);
+      }
+    }
+    await saveOutbox(remain);
+    return sent;
+    } finally {
+      _outboxFlushing = false;
+    }
+  }
+
+  static Future<void> saveKbMemory(List items) async => _writeList('kb_memory.json', items);
+  static Future<List> loadKbMemory() async => _readList('kb_memory.json');
+
+  static Future<void> enqueueContribution(Map item) async {
+    final box = await _readList('contrib_outbox.json');
+    item['queued_at'] = DateTime.now().toIso8601String();
+    box.add(item);
+    final f = await _file('contrib_outbox.json');
+    await f.writeAsString(jsonEncode(box), flush: true);
+  }
+
+  static Future<int> flushContributions(String apiBase) async {
+    final f = await _file('contrib_outbox.json');
+    List box = [];
+    if (await f.exists()) {
+      try {
+        final data = jsonDecode(await f.readAsString());
+        if (data is List) box = data;
+      } catch (_) {}
+    }
+    if (box.isEmpty) return 0;
+    final remain = <dynamic>[];
+    var sent = 0;
+    for (final raw in box) {
+      if (raw is! Map) continue;
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$apiBase/v1/knowledge/contribute'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(raw),
+            )
+            .timeout(const Duration(seconds: 15));
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          sent++;
+        } else {
+          remain.add(raw);
+        }
+      } catch (_) {
+        remain.add(raw);
+      }
+    }
+    await f.writeAsString(jsonEncode(remain), flush: true);
+    return sent;
+  }
+
+  static Future<Map<String, int>> packSummary() async {
+    final procs = await loadProcedures();
+    final lib = await loadLibrary();
+    final experts = await loadExperts();
+    final alerts = await loadAlerts();
+    return {
+      'procedures': procs.length,
+      'library': lib.length,
+      'experts': experts.length,
+      'alerts': alerts.length,
+    };
+  }
+
+  static Future<void> syncAll(String apiBase) async {
+    try {
+      await flushOutbox(apiBase);
+    } catch (_) {}
+    try {
+      // Always replace local packs with server published list (including empty after deletes)
+      final pr = await http.get(Uri.parse('$apiBase/v1/procedures')).timeout(const Duration(seconds: 8));
+      if (pr.statusCode == 200) {
+        final data = jsonDecode(pr.body);
+        final items = data is Map ? (data['items'] as List? ?? []) : (data is List ? data : []);
+        final published = items
+            .where((p) => p is Map && ('${p['status']}' == 'published' || '${p['status']}' == ''))
+            .where((p) => p is Map && '${p['status']}' != 'draft')
+            .toList();
+        // Prefer explicit published only
+        final onlyPub = items.where((p) => p is Map && '${p['status']}' == 'published').toList();
+        await saveProcedures(onlyPub);
+      }
+    } catch (_) {}
+    try {
+      final lib = await http.get(Uri.parse('$apiBase/v1/library')).timeout(const Duration(seconds: 8));
+      if (lib.statusCode == 200) {
+        final data = jsonDecode(lib.body);
+        final items = data is Map ? (data['items'] as List? ?? []) : [];
+        if (items.isNotEmpty) await saveLibrary(items);
+      }
+    } catch (_) {}
+    try {
+      for (final q in ['district=all', 'district=Dowa', 'district=Lilongwe', '']) {
+        final url = q.isEmpty ? '$apiBase/v1/experts/' : '$apiBase/v1/experts/?country=MW&$q';
+        final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 6));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          if (data is List && data.isNotEmpty) {
+            await saveExperts(data);
+            break;
+          }
+        }
+      }
+    } catch (_) {}
+    try {
+      // device scan history (second-visit memory across reinstall if server has it)
+      // filled when device_id known from caller — optional no-op here
+    } catch (_) {}
+    try {
+      final a = await http.get(Uri.parse('$apiBase/v1/alerts?district=Lilongwe')).timeout(const Duration(seconds: 6));
+      if (a.statusCode == 200) {
+        final data = jsonDecode(a.body);
+        final items = data is Map ? (data['items'] as List? ?? []) : [];
+        if (items.isNotEmpty) await saveAlerts(items);
+      }
+    } catch (_) {}
+    try {
+      await flushContributions(apiBase);
+    } catch (_) {}
+    try {
+      final kb = await http.get(Uri.parse('$apiBase/v1/sync/knowledge')).timeout(const Duration(seconds: 8));
+      if (kb.statusCode == 200) {
+        final data = jsonDecode(kb.body) as Map;
+        final mem = data['memory'] as List? ?? [];
+        if (mem.isNotEmpty) await saveKbMemory(mem);
+        final procs = data['procedures'] as List? ?? [];
+        if (procs.isNotEmpty) await saveProcedures(procs);
+      }
+    } catch (_) {}
+  }
+
+  /// One bubble per logical message (stops local+server doubles).
+  static List dedupeMessages(List messages) {
+    final sorted = _sortMessages(messages);
+    // Pass 1: if any server voice exists, drop all local voice placeholders
+    final hasServerVoice = sorted.any((m) =>
+        m is Map && '${m['text']}'.contains('[voice_note:'));
+    final filtered = <dynamic>[];
+    for (final m in sorted) {
+      if (m is! Map) continue;
+      final text = '${m['text'] ?? ''}';
+      final type = '${m['type'] ?? ''}';
+      final id = '${m['id'] ?? ''}';
+      final isLocalVoice = id.startsWith('local-') &&
+          (type == 'audio_note' || text.contains('[Voice note]'));
+      if (hasServerVoice && isLocalVoice) continue;
+      filtered.add(m);
+    }
+    // Pass 2: unique by id, voice file, or sender+text
+    final out = <dynamic>[];
+    final seenIds = <String>{};
+    final seenVoiceFiles = <String>{};
+    final seenText = <String>{};
+    for (final m in filtered) {
+      if (m is! Map) continue;
+      final id = '${m['id'] ?? ''}';
+      if (id.isNotEmpty && !id.startsWith('local-')) {
+        if (seenIds.contains(id)) continue;
+        seenIds.add(id);
+      }
+      final text = '${m['text'] ?? ''}';
+      final type = '${m['type'] ?? ''}';
+      final isVoice = type == 'audio_note' || text.contains('[voice_note:') || text.contains('[Voice note]');
+      if (isVoice) {
+        String vkey = '${m['local_path'] ?? ''}';
+        final match = RegExp(r'\[voice_note:([^\]]+)\]').firstMatch(text);
+        if (match != null) vkey = match.group(1) ?? text;
+        final cid = '${m['client_id'] ?? ''}';
+        final at = DateTime.tryParse('${m['at'] ?? ''}') ?? DateTime.now();
+        // 2-minute bucket collapses double sends
+        final timeBucket = '${m['sender']}|vn|${at.millisecondsSinceEpoch ~/ 120000}';
+        if (cid.isNotEmpty && seenVoiceFiles.contains('cid:$cid')) continue;
+        if (vkey.isNotEmpty && seenVoiceFiles.contains(vkey)) continue;
+        if (seenVoiceFiles.contains(timeBucket)) continue;
+        if (cid.isNotEmpty) seenVoiceFiles.add('cid:$cid');
+        if (vkey.isNotEmpty) seenVoiceFiles.add(vkey);
+        seenVoiceFiles.add(timeBucket);
+        out.add(m);
+        continue;
+      }
+      final tkey = '${m['sender']}|$text';
+      if (text.isNotEmpty) {
+        if (seenText.contains(tkey)) {
+          if (id.startsWith('local-')) continue;
+          // replace local with server
+          final idx = out.indexWhere((x) =>
+              x is Map && '${x['sender']}|${x['text']}' == tkey && '${x['id']}'.startsWith('local-'));
+          if (idx >= 0) out[idx] = m;
+          continue;
+        }
+        seenText.add(tkey);
+      }
+      if (id.startsWith('local-') && id.isNotEmpty) {
+        if (seenIds.contains(id)) continue;
+        seenIds.add(id);
+      }
+      out.add(m);
+    }
+    return _sortMessages(out);
+  }
+
+  static Map<String, dynamic>? matchPublished(List procs, String hostKey, List<String> symptomKeys) {
+    final hk = normalizeHost(hostKey);
+    final matches = procs.where((p) {
+      if (p is! Map) return false;
+      final st = '${p['status']}'.toLowerCase();
+      if (st.isNotEmpty && st != 'published' && st != 'null' && st != '') {
+        // offline packs may omit status when only published were synced
+        if (st != 'published') return false;
+      }
+      return normalizeHost('${p['host_key']}') == hk;
+    }).toList();
+    if (matches.isEmpty) return null;
+    matches.sort((a, b) {
+      int score(Map p) {
+        final blob = '${p['title']} ${p['steps']} ${p['prevention_steps']}'.toLowerCase();
+        var s = 0;
+        for (final k in symptomKeys) {
+          if (blob.contains(k.replaceAll('_', ' ')) || blob.contains(k)) s++;
+        }
+        return s;
+      }
+      return score(b as Map).compareTo(score(a as Map));
+    });
+    return Map<String, dynamic>.from(matches.first as Map);
+  }
+
+  static Map<String, dynamic> resultFromProcedure(Map p, String lang) {
+    final title = p['title'];
+    String name = 'Guidance';
+    if (title is Map) {
+      name = '${title[lang] ?? title['en'] ?? title.values.first}';
+    }
+    final stepsRaw = p['steps'];
+    List stepTexts = [];
+    if (stepsRaw is Map) {
+      final v = stepsRaw[lang] ?? stepsRaw['en'] ?? (stepsRaw.values.isNotEmpty ? stepsRaw.values.first : []);
+      if (v is List) stepTexts = v;
+    }
+    final prevRaw = p['prevention_steps'];
+    List prevTexts = [];
+    if (prevRaw is Map) {
+      final v = prevRaw[lang] ?? prevRaw['en'] ?? [];
+      if (v is List) prevTexts = v;
+    }
+    return {
+      'outcome': 'published_guidance',
+      'result_color': 'green',
+      'confidence_band': 'medium',
+      'condition': {'id': p['id'], 'common_name': name, 'is_dangerous': false},
+      'procedure_steps': stepTexts.map((s) => {'type': 'published', 'text': '$s'}).toList(),
+      'prevention_steps': prevTexts.map((s) => {'type': 'prevention', 'text': '$s'}).toList(),
+      'products': p['products'] is List ? p['products'] : [],
+      'messages': {
+        'primary': name,
+        'published_note': 'From saved expert guidance (offline pack).',
+        'ask_expert_note': 'Ask a verified officer if unsure.',
+      },
+      'referral_required': false,
+      'from_published_library': true,
+      'from_offline_cache': true,
+      'procedure_id': p['id'],
+    };
+  }
+}
+
+
+
+
+const kApiBase = String.fromEnvironment('API_BASE', defaultValue: 'http://10.0.2.2:8000');
+
+const hostNames = {
+  'maize': {'en': 'Maize', 'ny': 'Chimanga', 'fr': 'Maïs', 'sw': 'Mahindi', 'pt': 'Milho'},
+  'cassava': {'en': 'Cassava', 'ny': 'Chinangwa', 'fr': 'Manioc', 'sw': 'Muhogo', 'pt': 'Mandioca'},
+  'tomato': {'en': 'Tomato', 'ny': 'Tomato', 'fr': 'Tomate', 'sw': 'Nyanya', 'pt': 'Tomate'},
+  'beans': {'en': 'Beans', 'ny': 'Nyemba', 'fr': 'Haricots', 'sw': 'Maharagwe', 'pt': 'Feijão'},
+  'groundnuts': {'en': 'Groundnuts', 'ny': 'Mtedza', 'fr': 'Arachides', 'sw': 'Karanga', 'pt': 'Amendoim'},
+  'rice': {'en': 'Rice', 'ny': 'Mpunga', 'fr': 'Riz', 'sw': 'Mchele', 'pt': 'Arroz'},
+  'chicken': {'en': 'Chickens', 'ny': 'Nkhuku', 'fr': 'Poules', 'sw': 'Kuku', 'pt': 'Galinhas'},
+  'goats': {'en': 'Goats', 'ny': 'Mbuzi', 'fr': 'Chèvres', 'sw': 'Mbuzi', 'pt': 'Cabras'},
+  'cattle': {'en': 'Cattle', 'ny': "Ng'ombe", 'fr': 'Bovins', 'sw': "Ng'ombe", 'pt': 'Gado'},
+};
+
+
+const ui = {
+  'en': {
+    'farm': 'My Farm', 'check': 'Check', 'experts': 'Experts', 'analytics': 'Farm overview',
+    'alerts': 'Alerts', 'recent': 'Recent', 'yourFarm': 'Crops & animals',
+    'emptyFarm': 'Add what you grow or raise', 'add': 'Add', 'period': 'Season / period', 'save': 'Save',
+    'lang': 'Language', 'online': 'Online', 'offline': 'Offline', 'sync': 'Sync',
+    'crop': 'Crops', 'animal': 'Animals', 'hold': 'Hold steady', 'point': 'Point at the problem',
+    'result': 'Result', 'likely': 'Likely issue', 'cando': 'What to do', 'callExpert': 'Call expert',
+    'danger': 'Danger signs?', 'banner': 'Pilot: published guidance only.',
+    'noCases': 'No scans yet', 'thisWeek': 'This week', 'hosts': 'On the farm',
+    'checks': 'Checks', 'openAlerts': 'Alerts', 'published': 'Guides',
+    'farmHealth': 'Farm Health', 'healthy': 'Healthy', 'allGood': 'All good', 'checkAlerts': 'Check alerts',
+    'needsCare': 'Needs care', 'ok': 'OK', 'quickStats': 'Quick Stats', 'crops': 'Crops', 'animals': 'Animals',
+    'guides': 'Guides', 'scans': 'Scans', 'myCropsAnimals': 'My crops & animals',
+    'refreshPacks': 'Refresh packs', 'farmName': 'Farm name', 'cancel': 'Cancel',
+    'greetingMorning': 'Good morning', 'greetingAfternoon': 'Good afternoon', 'greetingEvening': 'Good evening',
+    'offlinePack': 'Offline pack', 'guidesOfficers': 'Guides {p} · Officers {e}', 'libraryN': 'Library {n}',
+    'alertN': '{n} alert(s)', 'continueChat': 'Continue — chat then advice',
+    'confirmDescribe': 'Confirm plant/animal & describe', 'getAdvice': 'Get advice',
+    'scanChat': 'Scan chat', 'message': 'Message…', 'send': 'Send', 'voiceNote': 'Voice note', 'play': 'Play',
+    'recording': 'Recording… tap mic again to send', 'noMessages': 'No messages yet. Say hello or describe the problem.',
+    'videoRequest': 'Video request', 'videoCall': 'Video call', 'voiceCall': 'Voice call',
+    'fieldPackReady': 'Field pack ready on this phone', 'downloadPacks': 'Download packs before field work',
+    'downloadRefresh': 'Download / refresh packs',
+    'chatFirstBanner': 'Chat first — advice only when you ask (or tap Get advice). Works offline with saved packs.',
+    'askHost': 'Before any advice: what plant or animal is this? Type the name (e.g. maize, goat, chicken).',
+    'identifyConfirm': 'From your scan and our library this looks like {h} ({o}). Is that correct? Type yes or the correct name.',
+    'prevScans': 'Previous scans of {h} on this phone:',
+    'photoSuggest': 'Photo received. Suggested: {h} ({o}). Type yes or the correct name.',
+    'historyEpisode': '{d}: {c} — {n}',
+    'identifyAsk': 'I could not match this photo to a published host yet. What plant or animal is this? Type the name.',
+    'clarifyMore': 'Thank you. Describe signs (spots, wilting, weak animals…). This helps match published guidance.',
+    'askDesc': 'Thank you. What do you see? (spots, wilting, animals weak…). Describe in your own words.',
+    'howAdvice': 'When you want guidance, type "advice" or "help me" or "give advice". I only use expert-published steps.',
+    'typeAnswer': 'Type your answer…', 'assistant': 'Assistant', 'you': 'You',
+    'savedKb': 'Saved for shared knowledge (expert still approves treatments).',
+    'offlineAdvice': 'Offline pack guidance',
+    'noPack': 'No published guidance on this phone for that crop/animal yet. Connect once to download packs, or ask an officer.',
+    'analyse': 'Analyse scan', 'extraNotes': 'Extra notes (optional)',
+    'dangerSigns': 'Danger signs (many deaths, bloody discharge, cannot stand)',
+    'takePhoto': 'Take photo', 'chooseGallery': 'Gallery', 'symptoms': 'Symptoms',
+    'availableOfficers': 'Available officers', 'noOfficers': 'No officers listed yet. Register on the portal.',
+    'chat': 'Chat', 'call': 'Call', 'district': 'District', 'other': 'Other',
+    'prevention': 'Prevention / signs', 'medications': 'Medications (published)', 'outcome': 'Outcome',
+    'rememberHost': 'We remember this is {h}. You can update what you see, or tap Get advice / type advice.',
+    'lastNotes': 'Last notes: {n}',
+    'noPackTip': 'Tip: An officer must Publish a procedure for host {h}. Then open My Farm and Refresh packs while online.',
+    'packLine': 'Guides: {p} · Officers: {e} · Library: {l}',
+  },
+  'ny': {
+    'farm': 'Munda', 'check': 'Onani', 'experts': 'Akatswiri', 'analytics': 'Munda wanga',
+    'alerts': 'Chenjezo', 'recent': 'Posachedwa', 'yourFarm': 'Mbewu ndi ziweto',
+    'emptyFarm': 'Onjezani zomwe mumalima', 'add': 'Onjezani', 'period': 'Nyengo', 'save': 'Sungeni',
+    'lang': 'Chilankhulo', 'online': 'Pa intaneti', 'offline': 'Sipali intaneti', 'sync': 'Sync',
+    'crop': 'Mbewu', 'animal': 'Ziweto', 'hold': 'Gwiritsani', 'point': 'Lolani vuto',
+    'result': 'Zotsatira', 'likely': 'Vuto', 'cando': 'Chochita', 'callExpert': 'Imbani',
+    'danger': 'Zoopsa?', 'banner': 'Yeso: uphungu wovomerezedwa.',
+    'noCases': 'Palibe', 'thisWeek': 'Sabata ino', 'hosts': 'Pa munda',
+    'checks': 'Kuwona', 'openAlerts': 'Chenjezo', 'published': 'Uphungu',
+    'farmHealth': 'Thanzi la munda', 'healthy': 'Bwino', 'allGood': 'Zabwino zonse', 'checkAlerts': "Yang'anirani",
+    'needsCare': 'Osamalitsa', 'ok': 'Chabwino', 'quickStats': 'Ziwerengero', 'crops': 'Mbewu', 'animals': 'Ziweto',
+    'guides': 'Uphungu', 'scans': 'Kuwona', 'myCropsAnimals': 'Mbewu ndi ziweto zanga',
+    'refreshPacks': 'Tsitsani uphungu', 'farmName': 'Dzina la munda', 'cancel': 'Siya',
+    'greetingMorning': 'Mwadzuka bwanji', 'greetingAfternoon': 'Mwaswera bwanji', 'greetingEvening': 'Madzulo abwino',
+    'offlinePack': 'Pa foni', 'guidesOfficers': 'Uphungu {p} · Akatswiri {e}', 'libraryN': 'Library {n}',
+    'alertN': 'Chenjezo {n}', 'continueChat': 'Pitirizani — zokambirana kenako uphungu',
+    'confirmDescribe': 'Tsimikizani mbewu/chiweto ndi kufotokoza', 'getAdvice': 'Pezani uphungu',
+    'scanChat': 'Zokambirana', 'message': 'Uthenga…', 'send': 'Tumizani', 'voiceNote': 'Mawu', 'play': 'Tsegulani',
+    'recording': 'Kujambula… dinani mic kuti mutumize', 'noMessages': 'Palibe uthenga. Yankhulani.',
+    'videoRequest': 'Kanema', 'videoCall': 'Kuyimba kanema', 'voiceCall': 'Kuyimba',
+    'fieldPackReady': 'Uphungu uli pa foni', 'downloadPacks': 'Tsitsani uphungu musanapite kumunda',
+    'downloadRefresh': 'Tsitsani / sinthani uphungu',
+    'chatFirstBanner': 'Yankhulani poyamba — uphungu mukapempha. Zimagwira ngakhale sipali intaneti.',
+    'askHost': 'Musanalandire uphungu: ndi mbewu kapena chiweto chanji? Lemani dzina.',
+    'askDesc': 'Zikomo. Mukuwona chiyani? Fotokozerani.',
+    'howAdvice': 'Mukafuna uphungu, lembani "uphungu" kapena "thandizeni".',
+    'typeAnswer': 'Lembani yankho…', 'assistant': 'Mthandizi', 'you': 'Inu',
+    'savedKb': 'Zasungidwa. Katswiri amavomereza chithandizo.',
+    'offlineAdvice': 'Uphungu wa pa foni',
+    'noPack': 'Palibe uphungu pa foni. Lumikizani kuti mutseke packs, kapena funsani officer.',
+    'analyse': 'Onani', 'extraNotes': 'Zina (mwakufuna)',
+    'dangerSigns': 'Zoopsa (imfa zambiri, magazi, sangathe kuyimirira)',
+    'takePhoto': 'Jambula', 'chooseGallery': 'Gallery', 'symptoms': 'Zizindikiro',
+    'availableOfficers': 'Akatswiri omwe alipo', 'noOfficers': 'Palibe akatswiri. Lembani pa portal.',
+    'chat': 'Zokambirana', 'call': 'Imbani', 'district': 'Boma', 'other': 'Zina',
+    'prevention': 'Kupewa / zizindikiro', 'outcome': 'Zotsatira',
+    'rememberHost': 'Tikukumbukira kuti ndi {h}. Mutha kusintha zomwe mukuwona, kapena dinani Pezani uphungu / lembani uphungu.',
+    'lastNotes': 'Zolembedwa: {n}',
+    'noPackTip': 'Uphungu: Katswiri ayenera kusindikiza njira ya {h}. Kenako pa Munda → Tsitsani uphungu pa intaneti.',
+    'packLine': 'Uphungu: {p} · Akatswiri: {e} · Library: {l}',
+  },
+  'fr': {
+    'farm': 'Ferme', 'check': 'Vérifier', 'experts': 'Experts', 'analytics': 'Aperçu',
+    'alerts': 'Alertes', 'recent': 'Récent', 'yourFarm': 'Cultures et animaux',
+    'emptyFarm': 'Ajoutez ce que vous cultivez', 'add': 'Ajouter', 'period': 'Saison', 'save': 'Enregistrer',
+    'lang': 'Langue', 'online': 'En ligne', 'offline': 'Hors ligne', 'sync': 'Sync',
+    'crop': 'Cultures', 'animal': 'Animaux', 'hold': 'Tenez ferme', 'point': 'Visez le problème',
+    'result': 'Résultat', 'likely': 'Problème', 'cando': 'Que faire', 'callExpert': 'Appeler',
+    'danger': 'Danger ?', 'banner': 'Pilote : conseils publiés seulement.',
+    'noCases': 'Aucun', 'thisWeek': 'Cette semaine', 'hosts': 'À la ferme',
+    'checks': 'Contrôles', 'openAlerts': 'Alertes', 'published': 'Guides',
+    'farmHealth': 'Santé de la ferme', 'healthy': 'Saine', 'allGood': 'Tout va bien', 'checkAlerts': 'Voir alertes',
+    'needsCare': 'À surveiller', 'ok': 'OK', 'quickStats': 'Statistiques', 'crops': 'Cultures', 'animals': 'Animaux',
+    'guides': 'Guides', 'scans': 'Scans', 'myCropsAnimals': 'Mes cultures et animaux',
+    'refreshPacks': 'Actualiser', 'farmName': 'Nom de la ferme', 'cancel': 'Annuler',
+    'greetingMorning': 'Bonjour', 'greetingAfternoon': 'Bon après-midi', 'greetingEvening': 'Bonsoir',
+    'offlinePack': 'Pack hors ligne', 'guidesOfficers': 'Guides {p} · Experts {e}', 'libraryN': 'Bibliothèque {n}',
+    'alertN': '{n} alerte(s)', 'continueChat': 'Continuer — discussion puis conseils',
+    'confirmDescribe': 'Confirmer plante/animal et décrire', 'getAdvice': 'Obtenir des conseils',
+    'scanChat': 'Discussion', 'message': 'Message…', 'send': 'Envoyer', 'voiceNote': 'Note vocale', 'play': 'Lire',
+    'recording': 'Enregistrement… appuyez encore pour envoyer', 'noMessages': 'Pas de messages. Dites bonjour.',
+    'videoRequest': 'Demande vidéo', 'videoCall': 'Appel vidéo', 'voiceCall': 'Appel',
+    'fieldPackReady': 'Pack prêt sur ce téléphone', 'downloadPacks': 'Téléchargez les packs avant le terrain',
+    'downloadRefresh': 'Télécharger / actualiser',
+    'chatFirstBanner': 'Discussion d’abord — conseils quand vous demandez. Fonctionne hors ligne.',
+    'askHost': 'Avant tout conseil : quelle plante ou animal ? Écrivez le nom.',
+    'askDesc': 'Merci. Que voyez-vous ? Décrivez.',
+    'howAdvice': 'Pour les conseils, écrivez « conseil » ou « aide ».',
+    'typeAnswer': 'Votre réponse…', 'assistant': 'Assistant', 'you': 'Vous',
+    'savedKb': 'Enregistré (un expert valide les traitements).',
+    'offlineAdvice': 'Conseils hors ligne',
+    'noPack': 'Pas de guide sur ce téléphone. Connectez-vous une fois ou demandez un expert.',
+    'analyse': 'Analyser', 'extraNotes': 'Notes (optionnel)',
+    'dangerSigns': 'Signes de danger (morts nombreuses, sang, ne peut pas se tenir)',
+    'takePhoto': 'Photo', 'chooseGallery': 'Galerie', 'symptoms': 'Symptômes',
+    'availableOfficers': 'Experts disponibles', 'noOfficers': 'Aucun expert. Inscrivez-les sur le portail.',
+    'chat': 'Discussion', 'call': 'Appeler', 'district': 'District', 'other': 'Autre',
+    'prevention': 'Prévention / signes', 'outcome': 'Résultat',
+    'rememberHost': 'Nous nous souvenons que c’est {h}. Mettez à jour ce que vous voyez, ou demandez des conseils.',
+    'lastNotes': 'Dernières notes : {n}',
+    'noPackTip': 'Un expert doit Publier une procédure pour {h}. Puis Ferme → Actualiser les packs en ligne.',
+    'packLine': 'Guides : {p} · Experts : {e} · Bibliothèque : {l}',
+  },
+  'sw': {
+    'farm': 'Shamba', 'check': 'Angalia', 'experts': 'Wataalamu', 'analytics': 'Muhtasari',
+    'alerts': 'Tahadhari', 'recent': 'Hivi karibuni', 'yourFarm': 'Mazao na mifugo',
+    'emptyFarm': 'Ongeza unacholima', 'add': 'Ongeza', 'period': 'Msimu', 'save': 'Hifadhi',
+    'lang': 'Lugha', 'online': 'Mtandaoni', 'offline': 'Nje ya mtandao', 'sync': 'Sync',
+    'crop': 'Mazao', 'animal': 'Mifugo', 'hold': 'Shikilia', 'point': 'Elekeza tatizo',
+    'result': 'Matokeo', 'likely': 'Tatizo', 'cando': 'Fanya', 'callExpert': 'Piga',
+    'danger': 'Hatari?', 'banner': 'Majaribio: taratibu zilizochapishwa tu.',
+    'noCases': 'Hakuna', 'thisWeek': 'Wiki hii', 'hosts': 'Shambani',
+    'checks': 'Ukaguzi', 'openAlerts': 'Tahadhari', 'published': 'Mwongozo',
+    'farmHealth': 'Afya ya shamba', 'healthy': 'Sawa', 'allGood': 'Vyote vizuri', 'checkAlerts': 'Angalia tahadhari',
+    'needsCare': 'Inahitaji uangalifu', 'ok': 'Sawa', 'quickStats': 'Takwimu', 'crops': 'Mazao', 'animals': 'Wanyama',
+    'guides': 'Mwongozo', 'scans': 'Ukaguzi', 'myCropsAnimals': 'Mazao na mifugo yangu',
+    'refreshPacks': 'Onyesha upya', 'farmName': 'Jina la shamba', 'cancel': 'Ghairi',
+    'greetingMorning': 'Habari za asubuhi', 'greetingAfternoon': 'Habari za mchana', 'greetingEvening': 'Habari za jioni',
+    'offlinePack': 'Pakiti nje ya mtandao', 'guidesOfficers': 'Mwongozo {p} · Wataalamu {e}', 'libraryN': 'Maktaba {n}',
+    'alertN': 'Tahadhari {n}', 'continueChat': 'Endelea — mazungumzo kisha ushauri',
+    'confirmDescribe': 'Thibitisha mmea/mnyama na eleza', 'getAdvice': 'Pata ushauri',
+    'scanChat': 'Mazungumzo', 'message': 'Ujumbe…', 'send': 'Tuma', 'voiceNote': 'Sauti', 'play': 'Cheza',
+    'recording': 'Inarekodi… gusa mic tena kutuma', 'noMessages': 'Hakuna ujumbe. Salimu.',
+    'videoRequest': 'Ombi la video', 'videoCall': 'Simu ya video', 'voiceCall': 'Piga simu',
+    'fieldPackReady': 'Pakiti iko kwenye simu', 'downloadPacks': 'Pakua pakiti kabla ya shamba',
+    'downloadRefresh': 'Pakua / onyesha upya',
+    'chatFirstBanner': 'Mazungumzo kwanza — ushauri unapouliza. Inafanya kazi nje ya mtandao.',
+    'askHost': 'Kabla ya ushauri: ni mmea au mnyama gani? Andika jina.',
+    'askDesc': 'Asante. Unaona nini? Eleza.',
+    'howAdvice': 'Unapotaka ushauri, andika "ushauri" au "nisaidie".',
+    'typeAnswer': 'Andika jibu…', 'assistant': 'Msaidizi', 'you': 'Wewe',
+    'savedKb': 'Imehifadhiwa (mtaalamu aidhinishe matibabu).',
+    'offlineAdvice': 'Ushauri nje ya mtandao',
+    'noPack': 'Hakuna mwongozo kwenye simu. Unganisha mara moja au muulize afisa.',
+    'analyse': 'Chambua', 'extraNotes': 'Maelezo (hiari)',
+    'dangerSigns': 'Ishara za hatari (vifo vingi, damu, hawezi kusimama)',
+    'takePhoto': 'Piga picha', 'chooseGallery': 'Ghalani', 'symptoms': 'Dalili',
+    'availableOfficers': 'Wataalamu waliopo', 'noOfficers': 'Hakuna. Sajili kwenye portal.',
+    'chat': 'Mazungumzo', 'call': 'Piga', 'district': 'Wilaya', 'other': 'Nyingine',
+    'prevention': 'Kinga / ishara', 'outcome': 'Matokeo',
+    'rememberHost': 'Tunakumbuka hii ni {h}. Unaweza kusasisha unachoona, au gusa Pata ushauri.',
+    'lastNotes': 'Maelezo ya awali: {n}',
+    'noPackTip': 'Afisa lazima Achapishe taratibu ya {h}. Kisha Shamba → Pakua pakiti mtandaoni.',
+    'packLine': 'Mwongozo: {p} · Wataalamu: {e} · Maktaba: {l}',
+  },
+  'pt': {
+    'farm': 'Quinta', 'check': 'Verificar', 'experts': 'Especialistas', 'analytics': 'Resumo',
+    'alerts': 'Alertas', 'recent': 'Recente', 'yourFarm': 'Culturas e animais',
+    'emptyFarm': 'Adicione o que cultiva', 'add': 'Adicionar', 'period': 'Época', 'save': 'Guardar',
+    'lang': 'Idioma', 'online': 'Online', 'offline': 'Offline', 'sync': 'Sync',
+    'crop': 'Culturas', 'animal': 'Animais', 'hold': 'Mantenha firme', 'point': 'Aponte o problema',
+    'result': 'Resultado', 'likely': 'Problema', 'cando': 'O que fazer', 'callExpert': 'Ligar',
+    'danger': 'Perigo?', 'banner': 'Piloto: só procedimentos publicados.',
+    'noCases': 'Nenhum', 'thisWeek': 'Esta semana', 'hosts': 'Na quinta',
+    'checks': 'Verificações', 'openAlerts': 'Alertas', 'published': 'Guias',
+    'farmHealth': 'Saúde da quinta', 'healthy': 'Saudável', 'allGood': 'Tudo bem', 'checkAlerts': 'Ver alertas',
+    'needsCare': 'Precisa de cuidado', 'ok': 'OK', 'quickStats': 'Estatísticas', 'crops': 'Culturas', 'animals': 'Animais',
+    'guides': 'Guias', 'scans': 'Verificações', 'myCropsAnimals': 'As minhas culturas e animais',
+    'refreshPacks': 'Atualizar', 'farmName': 'Nome da quinta', 'cancel': 'Cancelar',
+    'greetingMorning': 'Bom dia', 'greetingAfternoon': 'Boa tarde', 'greetingEvening': 'Boa noite',
+    'offlinePack': 'Pacote offline', 'guidesOfficers': 'Guias {p} · Especialistas {e}', 'libraryN': 'Biblioteca {n}',
+    'alertN': '{n} alerta(s)', 'continueChat': 'Continuar — conversa depois conselho',
+    'confirmDescribe': 'Confirmar planta/animal e descrever', 'getAdvice': 'Obter conselho',
+    'scanChat': 'Conversa', 'message': 'Mensagem…', 'send': 'Enviar', 'voiceNote': 'Nota de voz', 'play': 'Reproduzir',
+    'recording': 'A gravar… toque no mic para enviar', 'noMessages': 'Sem mensagens. Diga olá.',
+    'videoRequest': 'Pedido de vídeo', 'videoCall': 'Chamada de vídeo', 'voiceCall': 'Chamada',
+    'fieldPackReady': 'Pacote pronto neste telefone', 'downloadPacks': 'Descarregue packs antes do campo',
+    'downloadRefresh': 'Descarregar / atualizar',
+    'chatFirstBanner': 'Conversa primeiro — conselho quando pedir. Funciona offline.',
+    'askHost': 'Antes de conselhos: que planta ou animal? Escreva o nome.',
+    'askDesc': 'Obrigado. O que vê? Descreva.',
+    'howAdvice': 'Para orientação, escreva "conselho" ou "ajuda".',
+    'typeAnswer': 'Escreva a resposta…', 'assistant': 'Assistente', 'you': 'Você',
+    'savedKb': 'Guardado (especialista aprova tratamentos).',
+    'offlineAdvice': 'Orientação offline',
+    'noPack': 'Sem guia neste telefone. Ligue-se uma vez ou peça a um técnico.',
+    'analyse': 'Analisar', 'extraNotes': 'Notas (opcional)',
+    'dangerSigns': 'Sinais de perigo (muitas mortes, sangue, não consegue ficar de pé)',
+    'takePhoto': 'Foto', 'chooseGallery': 'Galeria', 'symptoms': 'Sintomas',
+    'availableOfficers': 'Especialistas disponíveis', 'noOfficers': 'Nenhum. Registe no portal.',
+    'chat': 'Conversa', 'call': 'Ligar', 'district': 'Distrito', 'other': 'Outro',
+    'prevention': 'Prevenção / sinais', 'outcome': 'Resultado',
+    'packLine': 'Guias: {p} · Especialistas: {e} · Biblioteca: {l}',
+  },
+    'rememberHost': 'Lembramos que isto é {h}. Pode atualizar o que vê, ou toque Obter conselho.',
+    'lastNotes': 'Notas anteriores: {n}',
+    'noPackTip': 'Um técnico deve Publicar um procedimento para {h}. Depois Quinta → Atualizar packs online.',
+
+};
+
+String t(String lang, String key) {
+  const extra = {
+    'fromBook': {
+      'en': 'From published expert library',
+      'ny': 'Kuchokera ku buku la akatswiri',
+      'fr': 'Bibliothèque publiée',
+      'sw': 'Kutoka maktaba iliyochapishwa',
+      'pt': 'Biblioteca publicada',
+    },
+    'askExpertSafe': {
+      'en': 'If severe or notifiable, contact a vet or district office.',
+      'ny': 'Ngati zoopsa, funani vet.',
+      'fr': 'Si grave, contactez un vétérinaire.',
+      'sw': 'Ikiwa hatari, wasiliana na daktari wa mifugo.',
+      'pt': 'Se grave, contacte um veterinário.',
+    },
+    'treatment': {
+      'en': 'Treatment',
+      'ny': 'Chithandizo',
+      'fr': 'Traitement',
+      'sw': 'Matibabu',
+      'pt': 'Tratamento',
+    },
+  };
+  if (extra.containsKey(key)) {
+    final m = extra[key]!;
+    return m[lang] ?? m['en'] ?? key;
+  }
+  final Map<String, String>? langMap = ui[lang] is Map
+      ? Map<String, String>.from(ui[lang] as Map)
+      : null;
+  final Map<String, String>? enMap = ui['en'] is Map
+      ? Map<String, String>.from(ui['en'] as Map)
+      : null;
+  final v = langMap?[key] ?? enMap?[key];
+  return v ?? key;
+}
+
+String tf(String lang, String key, Map<String, String> vars) {
+  var s = t(lang, key);
+  vars.forEach((k, val) => s = s.replaceAll('{$k}', val));
+  return s;
+}
+
+String hostLabel(String key, String lang) => hostNames[key]?[lang] ?? hostNames[key]?['en'] ?? key;
+
+const livestockHosts = {'chicken', 'goats', 'cattle', 'pigs', 'sheep', 'ducks', 'goat', 'cow', 'cows'};
+const cropHosts = {'maize', 'cassava', 'tomato', 'beans', 'groundnuts', 'rice', 'cabbage', 'other', 'sorghum', 'millet', 'sweet_potato', 'banana', 'onion'};
+
+bool isLivestockHost(String h) {
+  final n = h.toLowerCase().trim().replaceAll(RegExp(r'[\s\-]+'), '_');
+  return livestockHosts.contains(n);
+}
+
+String normalizeHost(String raw) {
+  var h = raw.toLowerCase().trim().replaceAll(RegExp(r'[\s\-]+'), '_');
+  const aliases = {
+    'tomatoes': 'tomato', 'tomatoe': 'tomato', 'nyanya': 'tomato', 'tomate': 'tomato',
+    'maize': 'maize', 'corn': 'maize', 'chimanga': 'maize', 'mahindi': 'maize', 'milho': 'maize',
+    'cassava': 'cassava', 'chinangwa': 'cassava', 'muhogo': 'cassava',
+    'bean': 'beans', 'beans': 'beans',
+    'groundnut': 'groundnuts', 'groundnuts': 'groundnuts', 'peanut': 'groundnuts', 'peanuts': 'groundnuts',
+    'rice': 'rice', 'mpunga': 'rice',
+    'chicken': 'chicken', 'chickens': 'chicken', 'nkhuku': 'chicken', 'poultry': 'chicken',
+    'goat': 'goats', 'goats': 'goats', 'mbuzi': 'goats',
+    'cow': 'cattle', 'cows': 'cattle', 'cattle': 'cattle', 'ngombe': 'cattle',
+  };
+  if (aliases.containsKey(h)) return aliases[h]!;
+  if (h.endsWith('es') && aliases.containsKey(h.substring(0, h.length - 2))) {
+    return aliases[h.substring(0, h.length - 2)]!;
+  }
+  if (h.endsWith('s') && aliases.containsKey(h.substring(0, h.length - 1))) {
+    return aliases[h.substring(0, h.length - 1)]!;
+  }
+  for (final e in aliases.entries) {
+    if (h.contains(e.key) || e.key.contains(h)) return e.value;
+  }
+  return h;
+}
+
+IconData hostIcon(String key) {
+  switch (key) {
+    case 'maize': return Icons.grass;
+    case 'cassava': return Icons.spa;
+    case 'tomato': return Icons.eco;
+    case 'beans': return Icons.grain;
+    case 'groundnuts': return Icons.park;
+    case 'rice': return Icons.agriculture;
+    case 'chicken': return Icons.egg_alt;
+    case 'goats': return Icons.pets;
+    case 'cattle': return Icons.cruelty_free;
+    case 'other': return Icons.more_horiz;
+    default: return Icons.eco;
+  }
+}
+
+Color hostTint(String key) {
+  switch (key) {
+    case 'maize': return const Color(0xFFDCFCE7);
+    case 'cassava': return const Color(0xFFECFCCB);
+    case 'tomato': return const Color(0xFFFFE4E6);
+    case 'beans': return const Color(0xFFFEF3C7);
+    case 'groundnuts': return const Color(0xFFFFEDD5);
+    case 'rice': return const Color(0xFFCCFBF1);
+    case 'chicken': return const Color(0xFFFEF9C3);
+    case 'goats': return const Color(0xFFF5E6D3);
+    case 'cattle': return const Color(0xFFDBEAFE);
+    case 'other': return const Color(0xFFECEFF1);
+    default: return C.greenSoft;
+  }
+}
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const App());
+}
+
+class App extends StatefulWidget {
+  const App({super.key});
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  String lang = 'en';
+  String deviceId = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    final p = await SharedPreferences.getInstance();
+    var id = p.getString('device_id');
+    if (id == null || id.isEmpty) {
+      id = const Uuid().v4();
+      await p.setString('device_id', id);
+    }
+    setState(() {
+      lang = p.getString('lang') ?? 'en';
+      deviceId = id!;
+    });
+    // Always try pack download after install / open
+    await OfflineCache.syncAll(kApiBase).catchError((_) => null);
+  }
+
+  Future<void> setLang(String code) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString('lang', code);
+    setState(() => lang = code);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (deviceId.isEmpty) {
+      return MaterialApp(theme: masoTheme(), home: const Scaffold(body: Center(child: CircularProgressIndicator())));
+    }
+    return MaterialApp(
+      title: 'MasoMlimi',
+      debugShowCheckedModeBanner: false,
+      theme: masoTheme(),
+      home: Shell(lang: lang, deviceId: deviceId, onLang: setLang),
+    );
+  }
+}
+
+class Shell extends StatefulWidget {
+  final String lang, deviceId;
+  final Future<void> Function(String) onLang;
+  const Shell({super.key, required this.lang, required this.deviceId, required this.onLang});
+  @override
+  State<Shell> createState() => _ShellState();
+}
+
+class _ShellState extends State<Shell> {
+  int tab = 0;
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      MyFarmPage(lang: widget.lang, deviceId: widget.deviceId, onLang: widget.onLang),
+      CheckPage(lang: widget.lang, deviceId: widget.deviceId),
+      ExpertsPage(lang: widget.lang),
+    ];
+    return Scaffold(
+      body: pages[tab],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: tab,
+        onDestinationSelected: (i) => setState(() => tab = i),
+        destinations: [
+          NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: t(widget.lang, 'farm')),
+          NavigationDestination(icon: const Icon(Icons.camera_alt_outlined), selectedIcon: const Icon(Icons.camera_alt), label: t(widget.lang, 'check')),
+          NavigationDestination(icon: const Icon(Icons.groups_outlined), selectedIcon: const Icon(Icons.groups), label: t(widget.lang, 'experts')),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// MY FARM — home dashboard matching soft farm mock (greeting, hero, health, quick stats)
+class MyFarmPage extends StatefulWidget {
+  final String lang, deviceId;
+  final Future<void> Function(String) onLang;
+  const MyFarmPage({super.key, required this.lang, required this.deviceId, required this.onLang});
+  @override
+  State<MyFarmPage> createState() => _MyFarmPageState();
+}
+
+class _MyFarmPageState extends State<MyFarmPage> {
+  List hosts = [];
+  List recent = [];
+  List alerts = [];
+  int publishedCount = 0;
+  bool online = false;
+  int packProcs = 0;
+  int packExperts = 0;
+  int packLib = 0;
+  String farmName = 'MasoMlimi Farm';
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  String get _greeting {
+    final h = DateTime.now().hour;
+    if (h < 12) return t(widget.lang, 'greetingMorning');
+    if (h < 17) return t(widget.lang, 'greetingAfternoon');
+    return t(widget.lang, 'greetingEvening');
+  }
+
+  Future<void> load() async {
+    final p = await SharedPreferences.getInstance();
+    hosts = jsonDecode(p.getString('farm_hosts') ?? '[]') as List;
+    recent = jsonDecode(p.getString('cases') ?? '[]') as List;
+    farmName = p.getString('farm_name') ?? 'MasoMlimi Farm';
+    try {
+      final h = await http.get(Uri.parse('$kApiBase/health')).timeout(const Duration(seconds: 4));
+      online = h.statusCode == 200;
+      if (online) {
+        await OfflineCache.syncAll(kApiBase);
+        final sync = await http
+            .post(
+              Uri.parse('$kApiBase/v1/sync/delta'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'cursor': 0, 'country': 'MW', 'district': 'Lilongwe'}),
+            )
+            .timeout(const Duration(seconds: 8));
+        if (sync.statusCode == 200) {
+          final data = jsonDecode(sync.body) as Map;
+          alerts = (data['alerts'] as List?) ?? [];
+          final procs = (data['published_procedures'] as List?) ?? [];
+          publishedCount = procs.length;
+          final sum = data['district_summary'] as Map?;
+          if (sum != null && sum['published_procedures'] is int) {
+            publishedCount = sum['published_procedures'] as int;
+          }
+          if (alerts.isNotEmpty) await OfflineCache.saveAlerts(alerts);
+          await p.setString('alerts', jsonEncode(alerts));
+        }
+        await http.put(
+          Uri.parse('$kApiBase/v1/farm'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'device_id': widget.deviceId, 'hosts': hosts}),
+        );
+      } else {
+        alerts = await OfflineCache.loadAlerts();
+        if (alerts.isEmpty) {
+          alerts = jsonDecode(p.getString('alerts') ?? '[]') as List;
+        }
+      }
+    } catch (_) {
+      online = false;
+      alerts = await OfflineCache.loadAlerts();
+      if (alerts.isEmpty) {
+        alerts = jsonDecode(p.getString('alerts') ?? '[]') as List;
+      }
+    }
+    final pack = await OfflineCache.packSummary();
+    packProcs = pack['procedures'] ?? 0;
+    packExperts = pack['experts'] ?? 0;
+    packLib = pack['library'] ?? 0;
+    if (publishedCount == 0) publishedCount = packProcs;
+    if (mounted) setState(() {});
+  }
+
+  Future<void> addHost(String key, String organism) async {
+    final c = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(hostLabel(key, widget.lang)),
+        content: TextField(controller: c, decoration: InputDecoration(labelText: t(widget.lang, 'period'))),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t(widget.lang, 'cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t(widget.lang, 'save'))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    hosts = [
+      ...hosts.where((h) => '${h['host_key']}' != key),
+      {'host_key': key, 'organism_type': organism, 'period': c.text.trim().isEmpty ? 'This season' : c.text.trim()},
+    ];
+    final p = await SharedPreferences.getInstance();
+    await p.setString('farm_hosts', jsonEncode(hosts));
+    setState(() {});
+    load();
+  }
+
+  Future<void> _renameFarm() async {
+    final c = TextEditingController(text: farmName);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t(widget.lang, 'farmName')),
+        content: TextField(controller: c, decoration: const InputDecoration(hintText: 'e.g. Green Valley Farm')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t(widget.lang, 'cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t(widget.lang, 'save'))),
+        ],
+      ),
+    );
+    if (ok == true && c.text.trim().isNotEmpty) {
+      final p = await SharedPreferences.getInstance();
+      await p.setString('farm_name', c.text.trim());
+      setState(() => farmName = c.text.trim());
+    }
+  }
+
+  int get _cropCount => hosts.where((h) => '${h['organism_type']}' != 'livestock').length;
+  int get _animalCount => hosts.where((h) => '${h['organism_type']}' == 'livestock').length;
+
+  /// Simple farm health score from packs + alerts (not a medical claim).
+  double get _healthScore {
+    if (packProcs <= 0 && hosts.isEmpty) return 0.55;
+    final alertPenalty = (alerts.length * 0.08).clamp(0.0, 0.35);
+    final base = hosts.isEmpty ? 0.7 : 0.88;
+    return (base - alertPenalty).clamp(0.4, 0.98);
+  }
+
+  String get _healthLabel {
+    final s = _healthScore;
+    if (alerts.isNotEmpty) return widget.lang == 'ny' ? 'Yang\'anirani' : 'Check alerts';
+    if (s >= 0.85) return widget.lang == 'ny' ? 'Bwino' : 'Healthy';
+    if (s >= 0.65) return 'OK';
+    return widget.lang == 'ny' ? 'Osamalitsa' : 'Needs care';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final healthPct = (_healthScore * 100).round();
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F7F4),
+      body: RefreshIndicator(
+        onRefresh: load,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header: avatar + greeting + farm + bell
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: C.greenSoft,
+                            child: Icon(Icons.person, color: C.greenDark),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$_greeting',
+                                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                                ),
+                                GestureDetector(
+                                  onTap: _renameFarm,
+                                  child: Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          farmName,
+                                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1F2937)),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade700),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: load,
+                            style: IconButton.styleFrom(backgroundColor: Colors.white),
+                            icon: Icon(online ? Icons.notifications_none : Icons.cloud_off, color: C.greenDark),
+                          ),
+                          PopupMenuButton<String>(
+                            icon: const Icon(Icons.language, color: C.greenDark),
+                            onSelected: widget.onLang,
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(value: 'en', child: Text('English')),
+                              PopupMenuItem(value: 'ny', child: Text('Chichewa')),
+                              PopupMenuItem(value: 'fr', child: Text('Français')),
+                              PopupMenuItem(value: 'sw', child: Text('Kiswahili')),
+                              PopupMenuItem(value: 'pt', child: Text('Português')),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Hero illustration card
+                      Container(
+                        width: double.infinity,
+                        height: 150,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFFB8E4C9), Color(0xFF7BC896), Color(0xFF5BB87A)],
+                          ),
+                          boxShadow: [
+                            BoxShadow(color: C.greenDark.withValues(alpha: 0.15), blurRadius: 16, offset: const Offset(0, 8)),
+                          ],
+                        ),
+                        child: Stack(
+                          children: [
+                            Positioned(
+                              right: 12,
+                              top: 16,
+                              child: Icon(Icons.wb_sunny_rounded, color: Colors.amber.shade200, size: 36),
+                            ),
+                            Positioned(
+                              left: 20,
+                              bottom: 16,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Icon(Icons.agriculture, color: Colors.white.withValues(alpha: 0.95), size: 48),
+                                  const SizedBox(width: 8),
+                                  Icon(Icons.cottage_outlined, color: Colors.white.withValues(alpha: 0.9), size: 40),
+                                  const SizedBox(width: 6),
+                                  Icon(Icons.pets, color: Colors.white.withValues(alpha: 0.85), size: 28),
+                                ],
+                              ),
+                            ),
+                            Positioned(
+                              right: 20,
+                              bottom: 20,
+                              child: Icon(Icons.eco, color: Colors.white.withValues(alpha: 0.5), size: 64),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Farm Health + Status row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _softCard(
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 56,
+                                    height: 56,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        CircularProgressIndicator(
+                                          value: _healthScore,
+                                          strokeWidth: 6,
+                                          backgroundColor: const Color(0xFFE5E7EB),
+                                          color: alerts.isEmpty ? C.greenDark : C.amber,
+                                        ),
+                                        Text('$healthPct%', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(t(widget.lang, 'farmHealth'), style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                                        Text(_healthLabel, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                                        Text(
+                                          alerts.isEmpty ? (online ? t(widget.lang, 'allGood') : t(widget.lang, 'offlinePack')) : tf(widget.lang, 'alertN', {'n': '${alerts.length}'}),
+                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _softCard(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(online ? Icons.cloud_done : Icons.cloud_off, color: C.greenDark, size: 22),
+                                      const SizedBox(width: 6),
+                                      Text(online ? t(widget.lang, 'online') : t(widget.lang, 'offline'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(tf(widget.lang, 'guidesOfficers', {'p': '$packProcs', 'e': '$packExperts'}), style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                                  Text(tf(widget.lang, 'libraryN', {'n': '$packLib'}), style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                                  TextButton(
+                                    style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 28)),
+                                    onPressed: load,
+                                    child: Text(t(widget.lang, 'refreshPacks')),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 22),
+
+                      Text(t(widget.lang, 'quickStats'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.grey.shade800)),
+                      const SizedBox(height: 12),
+                      GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 1.35,
+                        children: [
+                          _statTile(Icons.grass, '$_cropCount', t(widget.lang, 'crops'), const Color(0xFFDCFCE7)),
+                          _statTile(Icons.pets, '$_animalCount', t(widget.lang, 'animals'), const Color(0xFFFFF3E0)),
+                          _statTile(Icons.menu_book, '$packProcs', t(widget.lang, 'guides'), const Color(0xFFE0F2FE)),
+                          _statTile(Icons.history, '${recent.length}', t(widget.lang, 'scans'), const Color(0xFFF3E8FF)),
+                        ],
+                      ),
+                      const SizedBox(height: 22),
+
+                      // Add crops / animals (keep function, soft UI)
+                      Text(t(widget.lang, 'myCropsAnimals'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.grey.shade800)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final k in ['maize', 'cassava', 'tomato', 'beans', 'groundnuts', 'rice'])
+                            ActionChip(
+                              avatar: CircleAvatar(
+                                backgroundColor: Colors.transparent,
+                                backgroundImage: AssetImage('assets/hosts/$k.png'),
+                                onBackgroundImageError: (_, __) {},
+                              ),
+                              label: Text(hostLabel(k, widget.lang)),
+                              backgroundColor: Colors.white,
+                              onPressed: () => addHost(k, 'crop'),
+                            ),
+                          for (final k in ['chicken', 'goats', 'cattle'])
+                            ActionChip(
+                              avatar: CircleAvatar(
+                                backgroundColor: Colors.transparent,
+                                backgroundImage: AssetImage('assets/hosts/$k.png'),
+                                onBackgroundImageError: (_, __) {},
+                              ),
+                              label: Text(hostLabel(k, widget.lang)),
+                              backgroundColor: Colors.white,
+                              onPressed: () => addHost(k, 'livestock'),
+                            ),
+                        ],
+                      ),
+                      if (hosts.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        ...hosts.map((h) {
+                          final key = '${h['host_key']}';
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _softCard(
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: hostTint(key),
+                                    backgroundImage: AssetImage('assets/hosts/$key.png'),
+                                    onBackgroundImageError: (_, __) {},
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(hostLabel(key, widget.lang), style: const TextStyle(fontWeight: FontWeight.w700)),
+                                        Text('${h['period'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                      if (alerts.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(t(widget.lang, 'alerts'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.grey.shade800)),
+                        const SizedBox(height: 8),
+                        ...alerts.take(5).map((a) {
+                          final title = a is Map ? '${a['title'] ?? a['message'] ?? a}' : '$a';
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _softCard(
+                              child: Row(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600))),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                      const SizedBox(height: 28),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _softCard({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _statTile(IconData icon, String value, String label, Color bg) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: C.greenDark, size: 20),
+          ),
+          const Spacer(),
+          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+class CheckPage extends StatelessWidget {
+  final String lang, deviceId;
+  const CheckPage({super.key, required this.lang, required this.deviceId});
+
+  void open(BuildContext context, String key, String organism) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => CameraScanPage(lang: lang, deviceId: deviceId, hostKey: key, organismHint: organism),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final crops = [
+      ('maize', 'assets/hosts/maize.png'),
+      ('cassava', 'assets/hosts/cassava.png'),
+      ('tomato', 'assets/hosts/tomato.png'),
+      ('beans', 'assets/hosts/beans.png'),
+      ('groundnuts', 'assets/hosts/groundnuts.png'),
+      ('rice', 'assets/hosts/rice.png'),
+    ];
+    final animals = [
+      ('chicken', 'assets/hosts/chicken.png'),
+      ('goats', 'assets/hosts/goats.png'),
+      ('cattle', 'assets/hosts/cattle.png'),
+    ];
+
+    Widget hostRow(String key, String asset, String organism) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
+            onTap: () => open(context, key, organism),
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      asset,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 48,
+                        height: 48,
+                        color: hostTint(key),
+                        child: Icon(hostIcon(key), color: C.greenDark),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(hostLabel(key, lang), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF1F2937))),
+                        const SizedBox(height: 2),
+                        Text(
+                          organism == 'crop' ? t(lang, 'crop') : t(lang, 'animal'),
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F4F6),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+          children: [
+            // Top bar like mock
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: C.greenSoft,
+                  child: Icon(Icons.person_outline, color: C.greenDark, size: 20),
+                ),
+                const Spacer(),
+                const Text(
+                  'Check',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () {},
+                  icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF6B7280)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Hero status card (like Crop Health Status)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 16, offset: const Offset(0, 6)),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t(lang, 'check'),
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280), fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              t(lang, 'check'),
+                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Color(0xFF15803D)),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              t(lang, 'point'),
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(Icons.eco, color: Color(0xFF16A34A), size: 34),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Section card with list rows (mock style)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 14, offset: const Offset(0, 5)),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 10),
+                    child: Text(t(lang, 'crops'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF111827))),
+                  ),
+                  for (final c in crops) hostRow(c.$1, c.$2, 'crop'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 14, offset: const Offset(0, 5)),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 10),
+                    child: Text(t(lang, 'animals'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF111827))),
+                  ),
+                  for (final a in animals) hostRow(a.$1, a.$2, 'livestock'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Bottom tip card like "Plant Image Captured"
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.photo_camera_outlined, color: Color(0xFF16A34A)),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Photo check', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                        SizedBox(height: 2),
+                        Text('Good light · hold steady · show the affected area', style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CameraScanPage extends StatefulWidget {
+  final String lang, deviceId, hostKey, organismHint;
+  const CameraScanPage({super.key, required this.lang, required this.deviceId, required this.hostKey, required this.organismHint});
+  @override
+  State<CameraScanPage> createState() => _CameraScanPageState();
+}
+
+class _CameraScanPageState extends State<CameraScanPage> {
+  final picker = ImagePicker();
+
+  Future<void> shoot(ImageSource src) async {
+    final f = await picker.pickImage(source: src, imageQuality: 75, maxWidth: 1600);
+    if (f == null || !mounted) return;
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+      builder: (_) => ScanReviewPage(
+        lang: widget.lang,
+        deviceId: widget.deviceId,
+        hostKey: widget.hostKey,
+        organismHint: widget.organismHint,
+        photoPath: f.path,
+      ),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Row(
+                children: [
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                  const Text('MasoMlimi', style: TextStyle(fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  Text(hostLabel(widget.hostKey, widget.lang), style: const TextStyle(color: C.muted)),
+                  const SizedBox(width: 12),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
+                    color: const Color(0xFF1A2A1C),
+                    child: Center(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.photo_camera_outlined, size: 56, color: Colors.white54),
+                        const SizedBox(height: 12),
+                        Text(t(widget.lang, 'point'), textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                      ]),
+                    ),
+                  ),
+                  Center(
+                    child: Container(
+                      width: 260, height: 260,
+                      decoration: BoxDecoration(border: Border.all(color: Colors.white70, width: 2), borderRadius: BorderRadius.circular(18)),
+                    ),
+                  ),
+                  Positioned(
+                    top: 16, left: 0, right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.check_circle, color: Color(0xFF81C784), size: 16),
+                          const SizedBox(width: 6),
+                          Text(t(widget.lang, 'hold'), style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton.filledTonal(onPressed: () => shoot(ImageSource.gallery), icon: const Icon(Icons.photo_library_outlined)),
+                  GestureDetector(
+                    onTap: () => shoot(ImageSource.camera),
+                    child: Container(
+                      width: 74, height: 74,
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: C.greenDark, border: Border.all(color: C.greenSoft, width: 5)),
+                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 30),
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+class ScanReviewPage extends StatefulWidget {
+  final String lang, deviceId, hostKey, organismHint;
+  final String photoPath;
+  const ScanReviewPage({
+    super.key,
+    required this.lang,
+    required this.deviceId,
+    required this.hostKey,
+    required this.organismHint,
+    required this.photoPath,
+  });
+  @override
+  State<ScanReviewPage> createState() => _ScanReviewPageState();
+}
+
+class _ScanReviewPageState extends State<ScanReviewPage> {
+  final selected = <String>{};
+  bool danger = false;
+  final notes = TextEditingController();
+
+  List<Map<String, String>> get cropSigns => const [
+        {'key': 'yellow_leaves', 'label': 'Yellow leaves'},
+        {'key': 'spots', 'label': 'Spots on leaves'},
+        {'key': 'holes', 'label': 'Holes / chewed leaves'},
+        {'key': 'wilting', 'label': 'Wilting'},
+        {'key': 'stunted', 'label': 'Stunted growth'},
+        {'key': 'rot', 'label': 'Rot / soft tissue'},
+        {'key': 'insects_seen', 'label': 'Insects seen'},
+      ];
+
+  List<Map<String, String>> get animalSigns => const [
+        {'key': 'not_eating', 'label': 'Not eating'},
+        {'key': 'weak', 'label': 'Weak / lying down'},
+        {'key': 'diarrhea', 'label': 'Diarrhea'},
+        {'key': 'cough', 'label': 'Cough / breathing hard'},
+        {'key': 'skin', 'label': 'Skin / feathers problem'},
+        {'key': 'sudden_many_dead', 'label': 'Many sudden deaths'},
+        {'key': 'high_fever_group', 'label': 'Fever in several animals'},
+      ];
+
+  @override
+  Widget build(BuildContext context) {
+    final signs = widget.organismHint == 'livestock' ? animalSigns : cropSigns;
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F4F6),
+      appBar: AppBar(title: const Text('Scan review')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.file(File(widget.photoPath), height: 180, width: double.infinity, fit: BoxFit.cover),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(hostLabel(widget.hostKey, widget.lang), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                const SizedBox(height: 6),
+                const Text(
+                  'Select what you see. Guidance comes only from expert-published procedures — the app does not invent medicines.',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.35),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Signs observed', style: TextStyle(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final s in signs)
+                      FilterChip(
+                        label: Text(s['label']!),
+                        selected: selected.contains(s['key']),
+                        onSelected: (v) {
+                          setState(() {
+                            if (v) {
+                              selected.add(s['key']!);
+                            } else {
+                              selected.remove(s['key']!);
+                            }
+                          });
+                        },
+                      ),
+                  ],
+                ),
+                if (widget.organismHint == 'livestock') ...[
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Danger signs (many deaths, bloody discharge, cannot stand)'),
+                    value: danger,
+                    onChanged: (v) => setState(() => danger = v ?? false),
+                  ),
+                ],
+                TextField(
+                  controller: notes,
+                  decoration: const InputDecoration(
+                    labelText: 'Extra notes (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: () {
+              // Chat first — guidance only after farmer asks for advice
+              Navigator.of(context).pushReplacement(MaterialPageRoute(
+                builder: (_) => KnowledgeChatPage(
+                  lang: widget.lang,
+                  deviceId: widget.deviceId,
+                  hostKey: widget.hostKey,
+                  organismType: widget.organismHint,
+                  scanOutcome: '',
+                  photoPath: widget.photoPath,
+                  symptomKeys: selected.toList(),
+                  dangerSigns: danger,
+                  notes: notes.text.trim(),
+                  startWithChat: true,
+                ),
+              ));
+            },
+            icon: const Icon(Icons.chat_bubble_outline),
+            label: Text(t(widget.lang, 'continueChat')),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class ResultPage extends StatefulWidget {
+  final String lang, deviceId, hostKey, organismHint;
+  final String? photoPath;
+  final List<String> symptomKeys;
+  final bool dangerSigns;
+  final String notes;
+  const ResultPage({
+    super.key,
+    required this.lang,
+    required this.deviceId,
+    required this.hostKey,
+    required this.organismHint,
+    this.photoPath,
+    this.symptomKeys = const [],
+    this.dangerSigns = false,
+    this.notes = '',
+  });
+  @override
+  State<ResultPage> createState() => _ResultPageState();
+}
+
+class _ResultPageState extends State<ResultPage> {
+  bool loading = true;
+  Map<String, dynamic>? result;
+  String? errorLine;
+  String lastUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    run();
+  }
+
+  Map<String, dynamic>? _asMap(dynamic v) {
+    if (v is Map<String, dynamic>) return v;
+    if (v is Map) return Map<String, dynamic>.from(v);
+    return null;
+  }
+
+  List _asList(dynamic v) {
+    if (v is List) return v;
+    return const [];
+  }
+
+  Future<void> run({bool danger = false}) async {
+    setState(() {
+      loading = true;
+      errorLine = null;
+    });
+    lastUrl = '$kApiBase/v1/diagnosis/diagnose';
+    try {
+      http.Response res;
+      if (widget.photoPath != null) {
+        lastUrl = '$kApiBase/v1/scan/analyze';
+        final req = http.MultipartRequest('POST', Uri.parse(lastUrl));
+        req.fields['host_key'] = widget.hostKey;
+        req.fields['organism_hint'] = widget.organismHint;
+        req.fields['language'] = widget.lang;
+        req.fields['device_id'] = widget.deviceId;
+        req.fields['danger_signs_present'] = (danger || widget.dangerSigns).toString();
+        req.files.add(await http.MultipartFile.fromPath('image', widget.photoPath!));
+        final streamed = await req.send().timeout(const Duration(seconds: 30));
+        res = await http.Response.fromStream(streamed);
+      } else {
+        res = await http
+            .post(
+              Uri.parse(lastUrl),
+              headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+              body: jsonEncode({
+                'host_key': widget.hostKey,
+                'organism_hint': widget.organismHint,
+                'danger_signs_present': danger || widget.dangerSigns,
+                'symptom_keys': widget.symptomKeys,
+                'answers': widget.notes.isEmpty ? {} : {'notes': widget.notes},
+                'language': widget.lang,
+                'device_id': widget.deviceId,
+              }),
+            )
+            .timeout(const Duration(seconds: 15));
+      }
+      if (res.statusCode != 200) {
+        setState(() {
+          errorLine = 'HTTP ${res.statusCode}: ${res.body}';
+          result = {
+            'outcome': 'not_sure',
+            'result_color': 'red',
+            'messages': {'primary': 'Server error ${res.statusCode}', 'ask_expert_note': t(widget.lang, 'callExpert')},
+            'procedure_steps': [],
+          };
+        });
+        return;
+      }
+      final decoded = jsonDecode(res.body);
+      final data = _asMap(decoded) ?? <String, dynamic>{};
+      setState(() => result = data);
+      // Refresh procedure pack in background for next offline use
+      try {
+        final pr = await http.get(Uri.parse('$kApiBase/v1/procedures')).timeout(const Duration(seconds: 6));
+        if (pr.statusCode == 200) {
+          final pdata = jsonDecode(pr.body);
+          final items = pdata is Map ? (pdata['items'] as List? ?? []) : [];
+          await OfflineCache.saveProcedures(items);
+          await OfflineCache.flushOutbox(kApiBase);
+        }
+      } catch (_) {}
+
+      final cond = _asMap(data['condition']);
+      final title = '${cond?['common_name'] ?? data['outcome'] ?? ''}';
+      final p = await SharedPreferences.getInstance();
+      final cases = jsonDecode(p.getString('cases') ?? '[]') as List;
+      cases.insert(0, {
+        'host_key': widget.hostKey,
+        'outcome': data['outcome'],
+        'color': data['result_color'],
+        'title': title,
+        'at': DateTime.now().toIso8601String(),
+      });
+      await p.setString('cases', jsonEncode(cases.take(40).toList()));
+    } catch (e) {
+      // Offline: use last downloaded published procedures
+      final cached = await OfflineCache.loadProcedures();
+      final matched = OfflineCache.matchPublished(cached, widget.hostKey, widget.symptomKeys);
+      if (matched != null) {
+        setState(() {
+          errorLine = 'Offline — showing saved expert guidance';
+          result = OfflineCache.resultFromProcedure(matched, widget.lang);
+        });
+      } else {
+        setState(() {
+          errorLine = 'Offline and no saved guidance for this crop/animal yet. Open app online once to download.';
+          result = {
+            'outcome': 'not_sure',
+            'result_color': 'red',
+            'messages': {
+              'primary': 'No offline pack for this host. Connect once to download published guides.',
+              'ask_expert_note': t(widget.lang, 'callExpert'),
+            },
+            'procedure_steps': [],
+          };
+        });
+      }
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = _asList(result?['procedure_steps']);
+    final prevention = _asList(result?['prevention_steps']);
+    final cond = _asMap(result?['condition']);
+    final msgs = _asMap(result?['messages']);
+    final name = '${cond?['common_name'] ?? hostLabel(widget.hostKey, widget.lang)}';
+    final primary = '${msgs?['primary'] ?? ''}';
+    final published = result?['from_published_library'] == true;
+    final outcome = '${result?['outcome'] ?? ''}';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(t(widget.lang, 'result')),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: () => run()),
+        ],
+      ),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // Always show connection status so farmers/dev can see if API was hit
+                DashCard(
+                  color: published ? C.greenSoft : (errorLine != null ? C.redSoft : C.amberSoft),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        published
+                            ? 'Expert-published guidance'
+                            : (errorLine != null ? 'Could not load from server' : 'Result'),
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 4),
+                      Text('API: $kApiBase', style: const TextStyle(fontSize: 11, color: C.muted)),
+                      if (outcome.isNotEmpty) Text('${t(widget.lang, 'outcome')}: $outcome', style: const TextStyle(fontSize: 12)),
+                      if (errorLine != null) Text(errorLine!, style: const TextStyle(fontSize: 12, color: C.red)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (widget.photoPath != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.file(File(widget.photoPath!), height: 160, width: double.infinity, fit: BoxFit.cover),
+                  ),
+                const SizedBox(height: 12),
+                Text(t(widget.lang, 'likely'), style: const TextStyle(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                SoftListCard(
+                  leading: Icon(hostIcon(widget.hostKey), color: C.greenDark),
+                  leadingBg: hostTint(widget.hostKey),
+                  title: name,
+                  subtitle: hostLabel(widget.hostKey, widget.lang),
+                  trailing: const SizedBox.shrink(),
+                ),
+                if (primary.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(primary, style: const TextStyle(height: 1.35)),
+                ],
+                if (msgs?['published_note'] != null) ...[
+                  const SizedBox(height: 6),
+                  Text('${msgs!['published_note']}', style: const TextStyle(fontSize: 12, color: C.muted)),
+                ],
+                const SizedBox(height: 14),
+                Text(t(widget.lang, 'cando'), style: const TextStyle(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                if (steps.isEmpty)
+                  SoftListCard(
+                    leading: const Icon(Icons.support_agent, color: C.greenDark),
+                    title: '${msgs?['ask_expert_note'] ?? t(widget.lang, 'callExpert')}',
+                    trailing: const SizedBox.shrink(),
+                  )
+                else
+                  ...steps.map((s) {
+                    String text;
+                    if (s is Map) {
+                      text = '${s['text'] ?? s}';
+                    } else {
+                      text = '$s';
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: SoftListCard(
+                        leading: const Icon(Icons.check_circle_outline, color: C.greenDark),
+                        title: text,
+                        trailing: const SizedBox.shrink(),
+                      ),
+                    );
+                  }),
+                if (prevention.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(t(widget.lang, 'prevention'), style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  ...prevention.map((s) {
+                    final text = s is Map ? '${s['text'] ?? s}' : '$s';
+                    if (text.startsWith('Sign:')) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: SoftListCard(
+                          leading: const Icon(Icons.visibility_outlined, color: C.amber),
+                          title: text.replaceFirst('Sign: ', ''),
+                          trailing: const SizedBox.shrink(),
+                        ),
+                      );
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: SoftListCard(
+                        leading: const Icon(Icons.shield_outlined, color: C.greenDark),
+                        title: text,
+                        trailing: const SizedBox.shrink(),
+                      ),
+                    );
+                  }),
+                ],
+                if (widget.organismHint == 'livestock') ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton(onPressed: () => run(danger: true), child: Text(t(widget.lang, 'danger'))),
+                ],
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: () {
+                    final outcome = '${result?['outcome'] ?? ''}';
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => KnowledgeChatPage(
+                        lang: widget.lang,
+                        deviceId: widget.deviceId,
+                        hostKey: widget.hostKey,
+                        organismType: widget.organismHint,
+                        scanOutcome: outcome,
+                      ),
+                    ));
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: Text(t(widget.lang, 'confirmDescribe')),
+                ),
+                const SizedBox(height: 8),
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExpertsPage(lang: widget.lang))),
+                  icon: const Icon(Icons.phone),
+                  label: Text(t(widget.lang, 'callExpert')),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+
+class ExpertsPage extends StatefulWidget {
+  final String lang;
+  const ExpertsPage({super.key, required this.lang});
+  @override
+  State<ExpertsPage> createState() => _ExpertsPageState();
+}
+
+class _ExpertsPageState extends State<ExpertsPage> {
+  List experts = [];
+  String deviceId = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final p = await SharedPreferences.getInstance();
+    deviceId = p.getString('device_id') ?? '';
+    // Instant offline paint
+    final cached = await OfflineCache.loadExperts();
+    if (mounted && cached.isNotEmpty) setState(() => experts = cached);
+    List loaded = [];
+    try {
+      for (final q in ['district=all', 'district=Dowa', 'district=Lilongwe', '']) {
+        final url = q.isEmpty ? '$kApiBase/v1/experts/' : '$kApiBase/v1/experts/?country=MW&$q';
+        final res = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 6));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          if (data is List && data.isNotEmpty) {
+            loaded = data;
+            break;
+          }
+        }
+      }
+    } catch (_) {}
+    if (loaded.isNotEmpty) {
+      await OfflineCache.saveExperts(loaded);
+      if (mounted) setState(() => experts = loaded);
+    } else if (mounted && experts.isEmpty) {
+      setState(() => experts = cached);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(t(widget.lang, 'experts')),
+        actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(t(widget.lang, 'availableOfficers'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          const SizedBox(height: 4),
+          const Text('Chat, voice or video with verified district staff.', style: TextStyle(color: C.muted, fontSize: 13)),
+          const SizedBox(height: 12),
+          if (experts.isEmpty)
+            const DashCard(
+              child: Text(
+                'No officers registered yet. District staff must add their names in the Expert Portal (Officers tab).',
+                style: TextStyle(color: C.muted, height: 1.35),
+              ),
+            )
+          else
+          ...experts.map((e) {
+            final name = '${e['display_name']}';
+            final role = '${e['role_label'] ?? ''}';
+            final avail = '${e['availability'] ?? ''}';
+            final id = '${e['id'] ?? name}';
+            final phone = e['phone_e164'];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: DashCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: C.greenSoft,
+                          child: Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(color: C.greenDark, fontWeight: FontWeight.w800)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                              Text('$role · ${e['district'] ?? ''}', style: const TextStyle(color: C.muted, fontSize: 12)),
+                              Text(avail, style: TextStyle(color: avail == 'available' ? C.greenDark : C.muted, fontSize: 12, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => ExpertChatPage(
+                                  lang: widget.lang,
+                                  deviceId: deviceId,
+                                  expertId: id,
+                                  expertName: name,
+                                  expertRole: role,
+                                  phone: phone is String ? phone : null,
+                                ),
+                              ));
+                            },
+                            icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                            label: const Text('Chat'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: phone != null
+                                ? () => launchUrl(Uri.parse('tel:$phone'))
+                                : () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Phone number not listed — use Chat or office hours')),
+                                    );
+                                  },
+                            icon: const Icon(Icons.call, size: 18),
+                            label: const Text('Call'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          SoftListCard(
+            leading: const Icon(Icons.account_balance, color: C.greenDark),
+            title: 'District agriculture office',
+            subtitle: 'General enquiries and support',
+            trailing: const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ExpertChatPage extends StatefulWidget {
+  final String lang, deviceId, expertId, expertName, expertRole;
+  final String? phone;
+  const ExpertChatPage({
+    super.key,
+    required this.lang,
+    required this.deviceId,
+    required this.expertId,
+    required this.expertName,
+    required this.expertRole,
+    this.phone,
+  });
+  @override
+  State<ExpertChatPage> createState() => _ExpertChatPageState();
+}
+
+class _ExpertChatPageState extends State<ExpertChatPage> {
+  final _ctrl = TextEditingController();
+  final _recorder = AudioRecorder();
+  final _player = AudioPlayer();
+
+  Future<void> _playVoiceNote(Map m) async {
+    try {
+      await _player.stop();
+      final local = '${m['local_path'] ?? ''}';
+      if (local.isNotEmpty) {
+        final f = File(local);
+        if (await f.exists() && await f.length() > 200) {
+          await _player.play(DeviceFileSource(local));
+          return;
+        }
+      }
+      final text = '${m['text'] ?? ''}';
+      final match = RegExp(r'\[voice_note:([^\]]+)\]').firstMatch(text);
+      final name = match?.group(1);
+      if (name != null && name.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        final mapped = prefs.getString('voice_local_$name') ?? '';
+        if (mapped.isNotEmpty) {
+          final mf = File(mapped);
+          if (await mf.exists() && await mf.length() > 200) {
+            await _player.play(DeviceFileSource(mapped));
+            return;
+          }
+        }
+        final dir = await getApplicationDocumentsDirectory();
+        final cache = File('${dir.path}/masomlimi_offline/voice_cache/$name');
+        if (await cache.exists() && await cache.length() > 200) {
+          await _player.play(DeviceFileSource(cache.path));
+          return;
+        }
+        await cache.parent.create(recursive: true);
+        final uri = Uri.parse('$kApiBase/v1/chat/voice/$name');
+        final res = await http.get(uri).timeout(const Duration(seconds: 25));
+        final bytes = res.bodyBytes;
+        if (res.statusCode == 200 && bytes.length > 200) {
+          await cache.writeAsBytes(bytes);
+          await prefs.setString('voice_local_$name', cache.path);
+          await _player.play(DeviceFileSource(cache.path));
+          return;
+        }
+        throw Exception(
+          'Server ${res.statusCode}, ${bytes.length} bytes (need >200). Re-record longer. Check API.',
+        );
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No audio on this bubble — re-record and send')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cannot play: $e')),
+        );
+      }
+    }
+  }
+  List messages = [];
+  bool loading = true;
+  bool _recording = false;
+  bool _voiceBusy = false;
+  String? _recordPath;
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    refresh();
+    _poll = Timer.periodic(const Duration(seconds: 3), (_) => refresh(silent: true));
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    _ctrl.dispose();
+    _recorder.dispose();
+    _player.dispose();
+    super.dispose();
+  }
+
+
+  Future<void> _toggleVoice() async {
+    if (_recording) {
+      await _stopAndSendVoice();
+    } else {
+      await _startVoice();
+    }
+  }
+
+  Future<void> _startVoice() async {
+    try {
+      if (await _recorder.isRecording()) {
+        await _recorder.stop();
+      }
+      final ok = await _recorder.hasPermission();
+      if (!ok) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Allow microphone in Android settings for MasoMlimi')),
+          );
+        }
+        return;
+      }
+      final dir = await getApplicationDocumentsDirectory();
+      final voiceDir = Directory('${dir.path}/masomlimi_offline/voice_notes');
+      if (!await voiceDir.exists()) await voiceDir.create(recursive: true);
+      _recordPath = '${voiceDir.path}/vn_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      // Try AAC first; fall back to WAV for emulator compatibility
+      try {
+        await _recorder.start(
+          const RecordConfig(encoder: AudioEncoder.aacLc, numChannels: 1, bitRate: 128000, sampleRate: 44100),
+          path: _recordPath!,
+        );
+      } catch (_) {
+        _recordPath = '${voiceDir.path}/vn_${DateTime.now().millisecondsSinceEpoch}.wav';
+        await _recorder.start(
+          const RecordConfig(encoder: AudioEncoder.wav, numChannels: 1, sampleRate: 16000),
+          path: _recordPath!,
+        );
+      }
+      if (!mounted) return;
+      setState(() => _recording = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Recording… speak now, then tap mic to send'), duration: Duration(seconds: 3)),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _recording = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not start mic: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopAndSendVoice() async {
+    try {
+      String? filePath;
+      try {
+        filePath = await _recorder.stop();
+      } catch (_) {}
+      filePath = filePath ?? _recordPath;
+      if (!mounted) return;
+      setState(() => _recording = false);
+      if (filePath == null || filePath.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No audio captured — try again')),
+        );
+        return;
+      }
+      final f = File(filePath);
+      if (!await f.exists() || await f.length() < 800) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No voice captured — speak longer, check mic permission')),
+        );
+        return;
+      }
+      await _sendVoiceFile(filePath);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _recording = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Voice error: $e')));
+      }
+    }
+  }
+
+  Future<void> _sendVoiceFile(String filePath) async {
+    if (_voiceBusy) return;
+    _voiceBusy = true;
+    try {
+      // Drop any pending outbox audio for same file (avoid double POST)
+      final box = await OfflineCache.loadOutbox();
+      final cleaned = box.where((o) {
+        if (o is! Map) return true;
+        if ('${o['type']}' != 'audio_note') return true;
+        return '${o['file_path']}' != filePath;
+      }).toList();
+      await OfflineCache.saveOutbox(cleaned);
+
+      await OfflineCache.enqueueOutbox({
+        'type': 'audio_note',
+        'device_id': widget.deviceId,
+        'expert_id': widget.expertId,
+        'sender': 'farmer',
+        'file_path': filePath,
+        'msg_type': 'audio_note',
+        'text': '[Voice note]',
+        'client_id': 'vn-${DateTime.now().millisecondsSinceEpoch}',
+      });
+
+      try {
+        final sent = await OfflineCache.flushOutbox(kApiBase);
+        if (sent > 0) {
+          // Only server messages — do not add a local voice bubble
+          await refresh(silent: true);
+          if (mounted) {
+            setState(() {
+              messages = OfflineCache.dedupeMessages(messages);
+            });
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voice note sent')));
+          }
+          return;
+        }
+      } catch (_) {}
+
+      // Offline: single local placeholder only
+      final localMsg = {
+        'id': 'local-vn-${DateTime.now().millisecondsSinceEpoch}',
+        'sender': 'farmer',
+        'type': 'audio_note',
+        'text': '[Voice note]',
+        'at': DateTime.now().toIso8601String(),
+        'pending_sync': true,
+        'local_path': filePath,
+      };
+      await OfflineCache.appendOutgoingChat(widget.deviceId, widget.expertId, localMsg);
+      if (mounted) {
+        setState(() => messages = OfflineCache.dedupeMessages([...messages, localMsg]));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Voice saved offline — will sync when online')),
+        );
+      }
+    } finally {
+      _voiceBusy = false;
+    }
+  }
+
+
+  Future<void> refresh({bool silent = false}) async {
+    // Always try to push outbox first when we have network
+    try {
+      await OfflineCache.flushOutbox(kApiBase);
+    } catch (_) {}
+
+    List server = [];
+    var onlineOk = false;
+    try {
+      final res = await http
+          .get(Uri.parse('$kApiBase/v1/chat/${widget.deviceId}/${widget.expertId}'))
+          .timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map;
+        server = (data['messages'] as List?) ?? [];
+        onlineOk = true;
+      }
+    } catch (_) {}
+
+    final local = await OfflineCache.loadChat(widget.deviceId, widget.expertId);
+    final outbox = await OfflineCache.loadOutbox();
+    // Pending only if still in outbox (not yet delivered)
+    bool stillQueued(Map m) {
+      final id = '${m['id'] ?? ''}';
+      final text = '${m['text'] ?? ''}';
+      final path = '${m['local_path'] ?? ''}';
+      for (final o in outbox) {
+        if (o is! Map) continue;
+        if (path.isNotEmpty && '${o['file_path']}' == path) return true;
+        if (text.isNotEmpty && '${o['text']}' == text && '${o['expert_id']}' == widget.expertId) return true;
+      }
+      return false;
+    }
+
+    List merged;
+    if (onlineOk) {
+      merged = List.from(server);
+      for (final p in local) {
+        if (p is! Map) continue;
+        if (p['pending_sync'] != true) continue;
+        if (!stillQueued(p)) continue; // already delivered — server copy is enough
+        // Avoid duplicate voice: if server already has any voice note, skip local placeholder
+        final isVoice = p['type'] == 'audio_note' || '${p['text']}'.contains('Voice note');
+        if (isVoice) {
+          final serverHasVoice = server.any((s) =>
+              s is Map &&
+              (s['type'] == 'audio_note' || '${s['text']}'.contains('[voice_note:')));
+          if (serverHasVoice) continue;
+        }
+        final text = '${p['text']}';
+        final exists = server.any((s) => s is Map && '${s['text']}' == text);
+        if (!exists) merged.add(p);
+      }
+      await OfflineCache.saveChat(widget.deviceId, widget.expertId, merged);
+    } else {
+      merged = local.isNotEmpty ? local : server;
+    }
+
+    merged = OfflineCache.dedupeMessages(merged);
+    if (!mounted) return;
+    setState(() {
+      messages = merged;
+      loading = false;
+    });
+  }
+
+  Future<void> send({String type = 'text', String? text}) async {
+    final body = text ?? _ctrl.text.trim();
+    if (body.isEmpty && type == 'text') return;
+    final localMsg = {
+      'id': 'local-${DateTime.now().millisecondsSinceEpoch}',
+      'sender': 'farmer',
+      'type': type,
+      'text': body,
+      'at': DateTime.now().toIso8601String(),
+      'pending_sync': true,
+    };
+    // Always keep on device first
+    await OfflineCache.enqueueOutbox({
+      'type': 'text',
+      'device_id': widget.deviceId,
+      'expert_id': widget.expertId,
+      'sender': 'farmer',
+      'text': body,
+      'msg_type': type,
+    });
+    _ctrl.clear();
+
+    try {
+      final sent = await OfflineCache.flushOutbox(kApiBase);
+      if (sent > 0) {
+        await refresh();
+        return;
+      }
+    } catch (_) {}
+
+    await OfflineCache.appendOutgoingChat(widget.deviceId, widget.expertId, localMsg);
+    if (mounted) {
+      setState(() => messages = OfflineCache.dedupeMessages([...messages, localMsg]));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Saved offline. Will sync when online.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.expertName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            Text(widget.expertRole, style: const TextStyle(fontSize: 12, color: C.muted, fontWeight: FontWeight.w400)),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Voice call',
+            icon: const Icon(Icons.call),
+            onPressed: () {
+              if (widget.phone != null) {
+                launchUrl(Uri.parse('tel:${widget.phone}'));
+              } else {
+                send(type: 'audio_note', text: 'Farmer requested a voice call');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Voice request sent in chat. Officer will call back when available.')),
+                );
+              }
+            },
+          ),
+          IconButton(
+            tooltip: 'Video call',
+            icon: const Icon(Icons.videocam_outlined),
+            onPressed: () {
+              send(type: 'video_request', text: 'Farmer requested a video call');
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Video call'),
+                  content: const Text(
+                    'A video request was sent to the officer. '
+                    'Full live video needs a secure call service in production. '
+                    'For this pilot, the officer can reply in chat or call you by phone.',
+                  ),
+                  actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: loading
+                ? const Center(child: CircularProgressIndicator())
+                : messages.isEmpty
+                    ? Center(child: Text(t(widget.lang, 'noMessages'), textAlign: TextAlign.center))
+                    : Builder(builder: (_) {
+                        final shown = OfflineCache.dedupeMessages(messages);
+                        return ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: shown.length,
+                        itemBuilder: (_, i) {
+                          final m = shown[i] as Map;
+                          final mine = m['sender'] == 'farmer';
+                          final rawType = '${m['type'] ?? 'text'}';
+                          final textStr = '${m['text'] ?? ''}';
+                          final type = (rawType == 'audio_note' || textStr.contains('[voice_note:') || textStr.contains('[Voice note]'))
+                              ? 'audio_note'
+                              : rawType;
+                          return Align(
+                            alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+                              decoration: BoxDecoration(
+                                color: mine ? C.greenSoft : Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: C.border),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (type == 'audio_note') ...[
+                                    Row(children: [const Icon(Icons.mic, size: 16), const SizedBox(width: 6), Text(t(widget.lang, 'voiceNote'), style: const TextStyle(fontWeight: FontWeight.w700))]),
+                                    TextButton.icon(
+                                      onPressed: () => _playVoiceNote(Map<String, dynamic>.from(m)),
+                                      icon: const Icon(Icons.play_arrow, size: 18),
+                                      label: Text(t(widget.lang, 'play')),
+                                    ),
+                                  ] else if (type == 'video_request')
+                                    const Row(children: [Icon(Icons.videocam, size: 16), SizedBox(width: 6), Text('Video request', style: TextStyle(fontWeight: FontWeight.w700))])
+                                  else
+                                    Text('${m['text'] ?? ''}', style: const TextStyle(height: 1.3)),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                        );
+                      }),
+          ),
+          if (_recording)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              color: Colors.red.shade50,
+              child: const Text('Recording… tap mic again to send',
+                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
+            ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+              child: Row(
+                children: [
+                  // Tap mic to start, tap again to stop & send (reliable on emulator + phone)
+                  IconButton(
+                    tooltip: _recording ? 'Tap to send' : 'Tap to record',
+                    icon: Icon(
+                      _recording ? Icons.stop_circle : Icons.mic,
+                      color: _recording ? Colors.red : C.greenDark,
+                      size: 30,
+                    ),
+                    onPressed: _toggleVoice,
+                  ),
+
+                  Expanded(
+                    child: TextField(
+                      controller: _ctrl,
+                      decoration: InputDecoration(
+                        hintText: t(widget.lang, 'message'),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      ),
+                      onSubmitted: (_) => send(),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton.filled(
+                    onPressed: () => send(),
+                    icon: const Icon(Icons.send),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+/// Post-scan: chat first; guidance only when farmer asks for advice (online + offline).
+
+/// Offline phrase translation for advice + short chat messages (pilot glossary).
+String translateTo(String text, String lang) {
+  if (lang == 'en' || text.isEmpty) return text;
+  const glossary = {
+    'ny': {
+      'From published expert guidance': 'Kuchokera ku uphungu wosindikizidwa',
+      'Prevention': 'Kupewa',
+      'Medications': 'Mankhwala',
+      'Ask a verified officer': 'Funsani katswiri wovomerezeka',
+      'Isolate': 'Patulani',
+      'Do not': 'Musamachite',
+      'Remove': 'Chotsani',
+      'Water': 'Madzi',
+      'Leaf': 'Tsamba', 'leaves': 'masamba', 'spots': 'mawala',
+      'Advice': 'Uphungu',
+    },
+    'fr': {
+      'From published expert guidance': 'D\'après les conseils publiés',
+      'Prevention': 'Prévention',
+      'Medications': 'Médicaments',
+      'Ask a verified officer': 'Demandez à un expert vérifié',
+      'Isolate': 'Isoler', 'Remove': 'Retirer', 'Water': 'Eau',
+      'Advice': 'Conseil',
+    },
+    'sw': {
+      'From published expert guidance': 'Kutoka mwongozo uliochapishwa',
+      'Prevention': 'Kinga', 'Medications': 'Dawa',
+      'Ask a verified officer': 'Muulize afisa aliyethibitishwa',
+      'Isolate': 'Tenga', 'Remove': 'Ondoa', 'Advice': 'Ushauri',
+    },
+    'pt': {
+      'From published expert guidance': 'Da orientação publicada',
+      'Prevention': 'Prevenção', 'Medications': 'Medicamentos',
+      'Ask a verified officer': 'Pergunte a um técnico verificado',
+      'Isolate': 'Isolar', 'Remove': 'Remover', 'Advice': 'Conselho',
+    },
+  };
+  final g = glossary[lang];
+  if (g == null) return text;
+  var out = text;
+  g.forEach((k, v) {
+    out = out.replaceAll(k, v);
+    out = out.replaceAll(k.toLowerCase(), v);
+  });
+  return out;
+}
+
+class LocalKb {
+  static Future<File> _file() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final d = Directory('${dir.path}/masomlimi_offline');
+    if (!await d.exists()) await d.create(recursive: true);
+    return File('${d.path}/local_kb.json');
+  }
+
+  static Future<Map<String, dynamic>> load() async {
+    try {
+      final f = await _file();
+      if (!await f.exists()) return {};
+      final data = jsonDecode(await f.readAsString());
+      return data is Map ? Map<String, dynamic>.from(data) : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<void> save(Map<String, dynamic> data) async {
+    final f = await _file();
+    await f.writeAsString(jsonEncode(data), flush: true);
+  }
+
+  /// Learn from interview + published advice for next time (same host only).
+  static Future<void> learn({
+    required String host,
+    required Map answers,
+    required String advice,
+    String procedureId = '',
+  }) async {
+    final hk = normalizeHost(host);
+    final all = await load();
+    final list = List.from(all[hk] is List ? all[hk] as List : []);
+    list.add({
+      'at': DateTime.now().toUtc().toIso8601String(),
+      'answers': answers,
+      'advice_summary': advice.length > 800 ? advice.substring(0, 800) : advice,
+      'procedure_id': procedureId,
+      'signs': '${answers['signs'] ?? ''}'.toLowerCase(),
+    });
+    // keep last 30 per host
+    all[hk] = list.length > 30 ? list.sublist(list.length - 30) : list;
+    await save(all);
+  }
+
+  static Future<List> forHost(String host) async {
+    final all = await load();
+    final list = all[normalizeHost(host)];
+    return list is List ? list : [];
+  }
+
+  static Future<String?> similarAdvice(String host, String signsBlob) async {
+    final list = await forHost(host);
+    if (list.isEmpty) return null;
+    final tokens = signsBlob.toLowerCase().split(RegExp(r'[^a-z0-9]+')).where((w) => w.length > 3).toSet();
+    Map? best;
+    var bestScore = 0;
+    for (final e in list) {
+      if (e is! Map) continue;
+      final s = '${e['signs'] ?? e['answers']}';
+      var score = 0;
+      for (final t in tokens) {
+        if (s.contains(t)) score++;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = e;
+      }
+    }
+    if (bestScore < 1 || best == null) return null;
+    return '${best['advice_summary'] ?? ''}';
+  }
+}
+
+class KnowledgeChatPage extends StatefulWidget {
+  final String lang;
+  final String deviceId;
+  final String hostKey;
+  final String organismType;
+  final String scanOutcome;
+  final String? photoPath;
+  final List<String> symptomKeys;
+  final bool dangerSigns;
+  final String notes;
+  final bool startWithChat;
+  const KnowledgeChatPage({
+    super.key,
+    required this.lang,
+    required this.deviceId,
+    required this.hostKey,
+    required this.organismType,
+    this.scanOutcome = '',
+    this.photoPath,
+    this.symptomKeys = const [],
+    this.dangerSigns = false,
+    this.notes = '',
+    this.startWithChat = true,
+  });
+  @override
+  State<KnowledgeChatPage> createState() => _KnowledgeChatPageState();
+}
+
+class _KnowledgeChatPageState extends State<KnowledgeChatPage> {
+  final _ctrl = TextEditingController();
+  final List<Map<String, String>> _msgs = [];
+  /// 0 host, 1 part/age, 2 signs, 3 duration, 4 spread, 5 context, 6 tried, 7 ready for advice
+  int _phase = 0;
+  String _confirmedHost = '';
+  String _description = '';
+  final Map<String, String> _answers = {};
+  bool _busy = false;
+  bool _adviceGiven = false;
+  bool _hostLocked = false;
+
+  String _tr(String key) {
+    const map = {
+      'title': 'scanChat',
+      'ask_host': 'askHost',
+      'ask_desc': 'askDesc',
+      'how_advice': 'howAdvice',
+      'hint': 'typeAnswer',
+      'send': 'send',
+      'saved': 'savedKb',
+      'bot': 'assistant',
+      'you': 'you',
+      'offline_advice': 'offlineAdvice',
+      'no_pack': 'noPack',
+      'want_advice': 'getAdvice',
+    };
+    return t(widget.lang, map[key] ?? key);
+  }
+
+  String _q(String key) {
+    const qs = {
+      'en': {
+        'part': 'Which part is affected (leaves, stem, fruit, whole plant) — or for animals: age and which animals?',
+        'signs': 'What signs do you see? (spots, yellow leaves, wilting, coughing, diarrhoea, weak…)',
+        'duration': 'How long have you seen this? (days/weeks)',
+        'spread': 'How many plants/animals are affected? Is it spreading?',
+        'context': 'Any recent change? (rain, drought, new feed, new field, chemicals)',
+        'tried': 'What have you already tried? (if nothing, type none)',
+        'ready': 'Thanks. I locked this chat to {h} only (no other crops/animals). Type "advice" for guidance from published library + what we learned on this phone.',
+        'learned': 'Saved on this phone for next {h} scan. Officers can review when online.',
+        'from_memory': 'From earlier scans of this same item on this phone:',
+      },
+      'ny': {
+        'part': 'Ndi gawo liti logwidwa (masamba, tsinde, zipatso) — kapena chiweto: zaka ndi zingati?',
+        'signs': 'Mukuwona chiyani? (mawala, masamba achikasu, kuuma, kutsokomola…)',
+        'duration': 'Mwawona kwanthawi yayitali bwanji?',
+        'spread': 'Zili zingati zomwe zagwidwa? Zikufala?',
+        'context': 'Pali kusintha? (mvula, chilala, chakudya chatsopano)',
+        'tried': 'Mwayesa chiyani? (ngati palibe, lembani none)',
+        'ready': 'Zikomo. Zokambirana zili pa {h} zokha. Lemani "advice" kuti mupeze uphungu.',
+        'learned': 'Zasungidwa pa foni iyi pa {h}.',
+        'from_memory': 'Kuchokera ku kuwunika kwakale kwa {h}:',
+      },
+      'fr': {
+        'part': 'Quelle partie est touchée (feuilles, tige, fruit) — ou âge des animaux?',
+        'signs': 'Quels signes voyez-vous?',
+        'duration': 'Depuis combien de temps?',
+        'spread': 'Combien sont touchés? Ça se propage?',
+        'context': 'Changement récent (pluie, sécheresse, aliment)?',
+        'tried': 'Qu\'avez-vous déjà essayé? (sinon: none)',
+        'ready': 'Merci. Discussion verrouillée sur {h}. Tapez "advice" pour les conseils publiés.',
+        'learned': 'Enregistré sur ce téléphone pour {h}.',
+        'from_memory': 'D\'après les scans précédents de {h}:',
+      },
+      'sw': {
+        'part': 'Sehemu gani imeathiriwa (majani, shina, matunda) — au umri wa mnyama?',
+        'signs': 'Unaona ishara gani?',
+        'duration': 'Umefanya muda gani?',
+        'spread': 'Mimea/wanyama wangapi? Inaenea?',
+        'context': 'Mabadiliko ya hivi karibuni (mvua, ukame, chakula)?',
+        'tried': 'Umejaribu nini? (kama hakuna: none)',
+        'ready': 'Asante. Mazungumzo yamefungwa kwa {h} pekee. Andika "advice".',
+        'learned': 'Imehifadhiwa kwenye simu hii kwa {h}.',
+        'from_memory': 'Kutoka uchunguzi wa awali wa {h}:',
+      },
+      'pt': {
+        'part': 'Que parte está afetada (folhas, caule, fruto) — ou idade dos animais?',
+        'signs': 'Que sinais vê?',
+        'duration': 'Há quanto tempo?',
+        'spread': 'Quantos estão afetados? Está a espalhar-se?',
+        'context': 'Mudança recente (chuva, seca, ração)?',
+        'tried': 'O que já tentou? (se nada: none)',
+        'ready': 'Obrigado. Conversa bloqueada em {h}. Escreva "advice".',
+        'learned': 'Guardado neste telefone para {h}.',
+        'from_memory': 'De exames anteriores de {h}:',
+      },
+    };
+    final lang = qs[widget.lang] ?? qs['en']!;
+    return lang[key] ?? qs['en']![key]!;
+  }
+
+  bool _isAdviceRequest(String text) {
+    final low = text.toLowerCase().trim();
+    const keys = [
+      'advice', 'give advice', 'help me', 'help', 'guidance', 'what should i do',
+      'uphungu', 'thandizeni', 'thandizo', 'conseil', 'aide', 'ushauri', 'nisaidie', 'conselho', 'ajuda',
+    ];
+    return keys.any((k) => low == k || low.contains(k));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _confirmedHost = normalizeHost(widget.hostKey);
+    _bootstrapMemory();
+  }
+
+  Future<void> _bootstrapMemory() async {
+    final p = await SharedPreferences.getInstance();
+    var host = normalizeHost(widget.hostKey);
+    if (!mounted) return;
+    List hist = await OfflineCache.historyForHost(widget.deviceId, host);
+    try {
+      final res = await http
+          .get(Uri.parse(
+              '$kApiBase/v1/scans/history?device_id=${Uri.encodeComponent(widget.deviceId)}&host_key=${Uri.encodeComponent(host)}&limit=10'))
+          .timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map;
+        final items = data['items'] as List? ?? [];
+        if (items.isNotEmpty) {
+          final local = await OfflineCache.loadScanHistory();
+          final byId = <String, Map>{};
+          for (final e in [...local, ...items]) {
+            if (e is Map) {
+              final id = '${e['id'] ?? e['at'] ?? ''}';
+              if (id.isNotEmpty) byId[id] = Map<String, dynamic>.from(e);
+            }
+          }
+          await OfflineCache.saveScanHistory(byId.values.toList());
+          hist = await OfflineCache.historyForHost(widget.deviceId, host);
+        }
+      }
+    } catch (_) {}
+
+    final memKey = 'scan_chat_${widget.deviceId}_$host';
+    final prevDesc = p.getString('${memKey}_desc') ?? '';
+    final known = p.getBool('${memKey}_known') ?? false;
+    final localLearned = await LocalKb.forHost(host);
+    final org = widget.organismType == 'livestock' ? t(widget.lang, 'animal') : t(widget.lang, 'crop');
+
+    if ((known || hist.isNotEmpty || localLearned.isNotEmpty) && host.isNotEmpty && host != 'other') {
+      _confirmedHost = host;
+      _hostLocked = true;
+      _description = prevDesc;
+      _phase = 7;
+      setState(() {
+        _msgs.add({'role': 'bot', 'text': tf(widget.lang, 'rememberHost', {'h': hostLabel(host, widget.lang)})});
+        if (hist.isNotEmpty || localLearned.isNotEmpty) {
+          final buf = StringBuffer(_q('from_memory').replaceAll('{h}', hostLabel(host, widget.lang)));
+          for (var i = 0; i < hist.length && i < 3; i++) {
+            final e = hist[i] as Map;
+            final note = '${e['farmer_description'] ?? ''}';
+            if (note.isNotEmpty) buf.writeln('\n• ${'${e['at']}'.split('T').first}: $note');
+          }
+          for (var i = 0; i < localLearned.length && i < 2; i++) {
+            final e = localLearned[localLearned.length - 1 - i];
+            if (e is Map && '${e['signs']}'.isNotEmpty) buf.writeln('\n• learned: ${e['signs']}');
+          }
+          _msgs.add({'role': 'bot', 'text': buf.toString()});
+        }
+        if (prevDesc.isNotEmpty) {
+          _msgs.add({'role': 'bot', 'text': tf(widget.lang, 'lastNotes', {'n': prevDesc})});
+        }
+        _msgs.add({'role': 'bot', 'text': _q('ready').replaceAll('{h}', hostLabel(host, widget.lang))});
+      });
+      return;
+    }
+
+    if (host.isNotEmpty && host != 'other') {
+      _confirmedHost = host;
+      setState(() {
+        _phase = 0;
+        final msg = widget.photoPath != null
+            ? tf(widget.lang, 'identifyConfirm', {'h': hostLabel(host, widget.lang), 'o': org})
+            : tf(widget.lang, 'identifyConfirm', {'h': hostLabel(host, widget.lang), 'o': org});
+        _msgs.add({'role': 'bot', 'text': msg});
+      });
+    } else {
+      setState(() {
+        _phase = 0;
+        _msgs.add({'role': 'bot', 'text': _tr('ask_host')});
+      });
+    }
+  }
+
+  Future<void> _rememberHost(String host, {String desc = ''}) async {
+    final p = await SharedPreferences.getInstance();
+    final h = normalizeHost(host);
+    final memKey = 'scan_chat_${widget.deviceId}_$h';
+    await p.setBool('${memKey}_known', true);
+    if (desc.isNotEmpty) await p.setString('${memKey}_desc', desc);
+  }
+
+  Future<String> _loadAdvice() async {
+    final host = normalizeHost(_confirmedHost.isNotEmpty ? _confirmedHost : widget.hostKey);
+    // Never mix organisms: only this host
+    final signsBlob = '${_answers['signs'] ?? ''} ${_description} ${_answers.values.join(' ')}';
+    final fromMem = await LocalKb.similarAdvice(host, signsBlob);
+
+    try {
+      await OfflineCache.syncAll(kApiBase);
+    } catch (_) {}
+
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$kApiBase/v1/knowledge/chat'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'message': signsBlob.isNotEmpty ? signsBlob : 'advice for $host',
+              'language': widget.lang,
+              'host_key': host,
+              'description': signsBlob,
+              'device_id': widget.deviceId,
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map;
+        var reply = '${data['reply'] ?? ''}';
+        // Force host check
+        final rh = normalizeHost('${data['host_key'] ?? host}');
+        if (rh.isNotEmpty && rh != host && data['source'] == 'published_procedure') {
+          reply = ''; // reject cross-host
+        }
+        if (reply.isNotEmpty) {
+          reply = translateTo(reply, widget.lang);
+          if (fromMem != null && fromMem.isNotEmpty) {
+            reply = '${_q('from_memory').replaceAll('{h}', hostLabel(host, widget.lang))}\n${translateTo(fromMem, widget.lang)}\n\n$reply';
+          }
+          return reply;
+        }
+      }
+    } catch (_) {}
+
+    // Online diagnose locked to host
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$kApiBase/v1/diagnosis/diagnose'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'host_key': host,
+              'organism_hint': isLivestockHost(host) ? 'livestock' : 'crop',
+              'danger_signs_present': widget.dangerSigns,
+              'symptom_keys': signsBlob.split(RegExp(r'[^a-zA-Z0-9]+')).where((w) => w.length > 3).toList(),
+              'answers': _answers,
+              'language': widget.lang,
+              'device_id': widget.deviceId,
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map;
+        final primary = '${(data['messages'] as Map?)?['primary'] ?? data['outcome'] ?? ''}';
+        final steps = data['procedure_steps'] as List? ?? [];
+        final buf = StringBuffer();
+        if (primary.isNotEmpty) buf.writeln(translateTo(primary, widget.lang));
+        for (var i = 0; i < steps.length && i < 8; i++) {
+          final s = steps[i];
+          final text = s is Map ? '${s['text'] ?? s}' : '$s';
+          buf.writeln('${i + 1}. ${translateTo(text, widget.lang)}');
+        }
+        final out = buf.toString().trim();
+        if (out.isNotEmpty) return out;
+      }
+    } catch (_) {}
+
+    final procs = await OfflineCache.loadProcedures();
+    final keys = signsBlob.toLowerCase().split(RegExp(r'[^a-z0-9_]+')).where((w) => w.length > 3).toList();
+    final matched = OfflineCache.matchPublished(procs, host, keys);
+    if (matched != null) {
+      final r = OfflineCache.resultFromProcedure(matched, widget.lang);
+      final primary = '${(r['messages'] as Map?)?['primary'] ?? ''}';
+      final steps = r['procedure_steps'] as List? ?? [];
+      final buf = StringBuffer('${_tr('offline_advice')}: ${translateTo(primary, widget.lang)}\n');
+      for (var i = 0; i < steps.length && i < 8; i++) {
+        final s = steps[i];
+        final text = s is Map ? '${s['text'] ?? s}' : '$s';
+        buf.writeln('${i + 1}. ${translateTo(text, widget.lang)}');
+      }
+      if (fromMem != null && fromMem.isNotEmpty) {
+        return '${_q('from_memory').replaceAll('{h}', hostLabel(host, widget.lang))}\n${translateTo(fromMem, widget.lang)}\n\n${buf.toString().trim()}';
+      }
+      return buf.toString().trim();
+    }
+    if (fromMem != null && fromMem.isNotEmpty) {
+      return '${_q('from_memory').replaceAll('{h}', hostLabel(host, widget.lang))}\n${translateTo(fromMem, widget.lang)}\n\n${_tr('no_pack')}';
+    }
+    return _tr('no_pack') + '\n\n' + tf(widget.lang, 'noPackTip', {'h': host});
+  }
+
+  Future<void> _saveEpisode(String advice) async {
+    final host = normalizeHost(_confirmedHost.isNotEmpty ? _confirmedHost : widget.hostKey);
+    final episode = {
+      'id': 'local-${DateTime.now().millisecondsSinceEpoch}',
+      'at': DateTime.now().toUtc().toIso8601String(),
+      'device_id': widget.deviceId,
+      'host_key': host,
+      'organism_type': isLivestockHost(host) ? 'livestock' : 'crop',
+      'farmer_description': _description,
+      'signs': _answers['signs'] ?? '',
+      'answers': _answers,
+      'condition_label': _answers['signs'] ?? host,
+      'advice_summary': advice.length > 500 ? advice.substring(0, 500) : advice,
+      'outcome': 'chat_advice',
+      'language': widget.lang,
+    };
+    await OfflineCache.appendScanEpisode(episode);
+    await LocalKb.learn(host: host, answers: _answers, advice: advice);
+    await _rememberHost(host, desc: _description.isNotEmpty ? _description : '${_answers['signs']}');
+    try {
+      await http
+          .post(
+            Uri.parse('$kApiBase/v1/scans/record'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(episode),
+          )
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {}
+    try {
+      await http
+          .post(
+            Uri.parse('$kApiBase/v1/knowledge/contribute'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'device_id': widget.deviceId,
+              'host_key': host,
+              'organism_type': episode['organism_type'],
+              'farmer_description': _description,
+              'signs_reported': _answers,
+              'language': widget.lang,
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {}
+  }
+
+  Future<void> _send() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty || _busy) return;
+    _ctrl.clear();
+    setState(() {
+      _msgs.add({'role': 'you', 'text': text});
+      _busy = true;
+    });
+
+    // Advice anytime after host locked
+    if (_hostLocked && _isAdviceRequest(text)) {
+      final advice = await _loadAdvice();
+      if (!mounted) return;
+      await _saveEpisode(advice);
+      setState(() {
+        _msgs.add({'role': 'bot', 'text': advice});
+        _msgs.add({'role': 'bot', 'text': _q('learned').replaceAll('{h}', hostLabel(_confirmedHost, widget.lang))});
+        _adviceGiven = true;
+        _busy = false;
+      });
+      return;
+    }
+
+    // Phase 0: confirm host — lock forever for this chat
+    if (_phase == 0) {
+      final low = text.toLowerCase().trim();
+      final yes = ['yes', 'y', 'correct', 'ok', 'ee', 'inde', 'ndiyo', 'oui', 'sim', 's'].contains(low);
+      if (!yes) {
+        final h = normalizeHost(text);
+        // Reject cross-type if widget fixed organism
+        if (widget.organismType == 'crop' && isLivestockHost(h)) {
+          setState(() {
+            _msgs.add({'role': 'bot', 'text': _tr('ask_host')});
+            _busy = false;
+          });
+          return;
+        }
+        if (widget.organismType == 'livestock' && !isLivestockHost(h) && h.isNotEmpty) {
+          // allow if they type livestock name; if crop name while livestock mode warn
+          if (cropHosts.contains(h)) {
+            setState(() {
+              _msgs.add({'role': 'bot', 'text': _tr('ask_host')});
+              _busy = false;
+            });
+            return;
+          }
+        }
+        _confirmedHost = h;
+      }
+      _hostLocked = true;
+      await _rememberHost(_confirmedHost);
+      setState(() {
+        _phase = 1;
+        _msgs.add({'role': 'bot', 'text': _q('part')});
+        _busy = false;
+      });
+      return;
+    }
+
+    if (_phase == 1) {
+      _answers['part'] = text;
+      setState(() {
+        _phase = 2;
+        _msgs.add({'role': 'bot', 'text': _q('signs')});
+        _busy = false;
+      });
+      return;
+    }
+    if (_phase == 2) {
+      _answers['signs'] = text;
+      _description = text;
+      setState(() {
+        _phase = 3;
+        _msgs.add({'role': 'bot', 'text': _q('duration')});
+        _busy = false;
+      });
+      return;
+    }
+    if (_phase == 3) {
+      _answers['duration'] = text;
+      setState(() {
+        _phase = 4;
+        _msgs.add({'role': 'bot', 'text': _q('spread')});
+        _busy = false;
+      });
+      return;
+    }
+    if (_phase == 4) {
+      _answers['spread'] = text;
+      setState(() {
+        _phase = 5;
+        _msgs.add({'role': 'bot', 'text': _q('context')});
+        _busy = false;
+      });
+      return;
+    }
+    if (_phase == 5) {
+      _answers['context'] = text;
+      setState(() {
+        _phase = 6;
+        _msgs.add({'role': 'bot', 'text': _q('tried')});
+        _busy = false;
+      });
+      return;
+    }
+    if (_phase == 6) {
+      _answers['tried'] = text;
+      _description = _answers.values.join('; ');
+      await _rememberHost(_confirmedHost, desc: _description);
+      // Count as scan as soon as interview completes (dashboard total scans)
+      await _saveEpisode('(interview complete — advice pending)');
+      setState(() {
+        _phase = 7;
+        _msgs.add({'role': 'bot', 'text': _q('ready').replaceAll('{h}', hostLabel(_confirmedHost, widget.lang))});
+        _busy = false;
+      });
+      return;
+    }
+
+    // Phase 7+: questions about this host's published library OR advice
+    _description = '$_description; $text';
+    _answers['extra'] = '${_answers['extra'] ?? ''} $text';
+    await _rememberHost(_confirmedHost, desc: _description);
+    if (_isAdviceRequest(text)) {
+      final advice = await _loadAdvice();
+      if (!mounted) return;
+      await _saveEpisode(advice);
+      setState(() {
+        _msgs.add({'role': 'bot', 'text': advice});
+        _msgs.add({'role': 'bot', 'text': _q('learned').replaceAll('{h}', hostLabel(_confirmedHost, widget.lang))});
+        _adviceGiven = true;
+        _busy = false;
+      });
+      return;
+    }
+    // Ask knowledge base (e.g. types of diseases of tomatoes)
+    final kb = await _askLibrary(text);
+    if (!mounted) return;
+    setState(() {
+      _msgs.add({'role': 'bot', 'text': kb['text'] ?? ''});
+      final imgs = kb['images'] as List? ?? [];
+      for (final u in imgs) {
+        if (u is String && u.isNotEmpty) {
+          _msgs.add({'role': 'bot', 'text': '', 'image_url': u});
+        }
+      }
+      _busy = false;
+    });
+  }
+
+  Future<Map<String, dynamic>> _askLibrary(String question) async {
+    final host = normalizeHost(_confirmedHost.isNotEmpty ? _confirmedHost : widget.hostKey);
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$kApiBase/v1/knowledge/chat'),
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: jsonEncode({
+              'message': question,
+              'language': widget.lang,
+              'host_key': host,
+              'description': _description,
+              'device_id': widget.deviceId,
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map;
+        var reply = '${data['reply'] ?? ''}';
+        reply = translateTo(reply, widget.lang);
+        final images = <String>[];
+        final imgs = data['images'] as List? ?? [];
+        for (final im in imgs) {
+          if (im is Map) {
+            var url = '${im['image_url'] ?? ''}';
+            if (url.startsWith('/')) url = '$kApiBase$url';
+            if (url.isNotEmpty) images.add(url);
+          }
+        }
+        // Offline fallback catalog if empty
+        if (reply.isEmpty || data['source'] == 'none') {
+          final offline = await _offlineCatalog(host, question: question);
+          return offline;
+        }
+        return {'text': reply, 'images': images};
+      }
+    } catch (_) {}
+    return await _offlineCorpusAnswer(host, question);
+  }
+
+  
+  Future<Map<String, dynamic>> _offlineCorpusAnswer(String host, String question) async {
+    final procs = await OfflineCache.loadProcedures();
+    final q = question.toLowerCase();
+    final tokens = q.split(RegExp(r'[^a-z0-9]+')).where((w) => w.length > 2).toSet();
+    final hk = normalizeHost(host);
+    final scored = <Map<String, dynamic>>[];
+    for (final p in procs) {
+      if (p is! Map) continue;
+      final st = '${p['status']}';
+      if (st.isNotEmpty && st != 'published') continue;
+      final ph = normalizeHost('${p['host_key']}');
+      final title = p['title'];
+      final name = title is Map ? (title[widget.lang] ?? title['en'] ?? '') : '$title';
+      final full = '${p['full_text'] ?? ''}';
+      final steps = p['steps'];
+      final stepList = steps is Map
+          ? ((steps[widget.lang] ?? steps['en'] ?? []) as List)
+          : (steps is List ? steps : []);
+      final blob = ('$name $ph $full ${stepList.join(' ')}').toLowerCase();
+      var score = 0;
+      for (final tok in tokens) {
+        if (blob.contains(tok)) score += 2;
+      }
+      if (hk.isNotEmpty && ph == hk) score += 8;
+      if (score > 0) {
+        scored.add({
+          'score': score,
+          'name': name,
+          'host': ph,
+          'full': full,
+          'steps': stepList,
+        });
+      }
+    }
+    scored.sort((a, b) => (b['score'] as int).compareTo(a['score'] as int));
+    if (scored.isEmpty) {
+      return await _offlineCatalog(host, question: question);
+    }
+    final buf = StringBuffer();
+    buf.writeln(t(widget.lang, 'fromBook'));
+    var i = 0;
+    for (final d in scored.take(5)) {
+      i++;
+      buf.writeln('$i. ${d['name']} (${d['host']})');
+      final full = '${d['full']}';
+      if (full.isNotEmpty && tokens.isNotEmpty) {
+        final sents = full.split(RegExp(r'[.\n]+'));
+        var hits = 0;
+        for (final s in sents) {
+          final low = s.toLowerCase();
+          if (tokens.any((tok) => tok.length > 3 && low.contains(tok))) {
+            buf.writeln('   • ${s.trim()}');
+            hits++;
+            if (hits >= 3) break;
+          }
+        }
+      }
+      final steps = d['steps'];
+      if (steps is List && steps.isNotEmpty) {
+        buf.writeln('   ${t(widget.lang, 'treatment')}: ${steps.take(4).join('; ')}');
+      }
+    }
+    buf.writeln(t(widget.lang, 'askExpertSafe'));
+    return {'text': buf.toString(), 'images': <String>[]};
+  }
+
+Future<Map<String, dynamic>> _offlineCatalog(String host, {String question = ''}) async {
+    final procs = await OfflineCache.loadProcedures();
+    final lib = await OfflineCache.loadLibrary();
+    final hk = normalizeHost(host);
+    final qtokens = question
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((w) => w.length > 3)
+        .toSet();
+    final buf = StringBuffer('Published knowledge for $hk:\n');
+    var n = 0;
+    for (final p in procs) {
+      if (p is! Map) continue;
+      if (normalizeHost('${p['host_key']}') != hk) continue;
+      final st = '${p['status']}';
+      if (st.isNotEmpty && st != 'published') continue;
+      final title = p['title'];
+      final name = title is Map ? (title[widget.lang] ?? title['en'] ?? 'condition') : '$title';
+      final full = '${p['full_text'] ?? ''}';
+      n++;
+      buf.writeln('$n. $name');
+      if (full.isNotEmpty && qtokens.isNotEmpty) {
+        final sents = full.split(RegExp(r'[.\n]+'));
+        var hits = 0;
+        for (final s in sents) {
+          final low = s.toLowerCase();
+          if (qtokens.any((t) => low.contains(t))) {
+            buf.writeln('   ${s.trim()}');
+            hits++;
+            if (hits >= 3) break;
+          }
+        }
+      }
+    }
+    for (final it in lib) {
+      if (it is! Map) continue;
+      if (normalizeHost('${it['host_key']}') != hk) continue;
+      final label = '${it['condition_label'] ?? it['title'] ?? it['filename'] ?? ''}';
+      final et = '${it['extracted_text'] ?? ''}';
+      if (label.isEmpty && et.isEmpty) continue;
+      n++;
+      buf.writeln('$n. ${label.isNotEmpty ? label : 'Library document'}');
+      if (et.isNotEmpty && qtokens.isNotEmpty) {
+        final sents = et.split(RegExp(r'[.\n]+'));
+        var hits = 0;
+        for (final s in sents) {
+          final low = s.toLowerCase();
+          if (qtokens.any((t) => low.contains(t))) {
+            buf.writeln('   ${s.trim()}');
+            hits++;
+            if (hits >= 2) break;
+          }
+        }
+      }
+    }
+    if (n == 0) {
+      return {'text': _tr('no_pack'), 'images': <String>[]};
+    }
+    return {'text': buf.toString(), 'images': <String>[]};
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${_tr('title')}${_hostLocked ? ' · ${hostLabel(_confirmedHost, widget.lang)}' : ''}'),
+      ),
+      body: Column(
+        children: [
+          if (_confirmedHost.isNotEmpty)
+            Container(
+              width: double.infinity,
+              color: C.green.withValues(alpha: 0.12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                '${hostLabel(_confirmedHost, widget.lang)} · ${isLivestockHost(_confirmedHost) ? t(widget.lang, 'animal') : t(widget.lang, 'crop')}',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+            ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: _msgs.length,
+              itemBuilder: (_, i) {
+                final m = _msgs[i];
+                final bot = m['role'] == 'bot';
+                final img = m['image_url'] ?? '';
+                return Align(
+                  alignment: bot ? Alignment.centerLeft : Alignment.centerRight,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+                    decoration: BoxDecoration(
+                      color: bot ? Colors.white : C.green.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if ((m['text'] ?? '').isNotEmpty)
+                          Text(m['text'] ?? '', style: const TextStyle(height: 1.35)),
+                        if (img.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              img,
+                              height: 160,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Text('Image unavailable offline'),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _ctrl,
+                    decoration: InputDecoration(
+                      hintText: _tr('hint'),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => _send(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                  onPressed: _busy ? null : _send,
+                  icon: const Icon(Icons.send),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _busy || !_hostLocked
+                    ? null
+                    : () async {
+                        setState(() => _busy = true);
+                        final advice = await _loadAdvice();
+                        if (!mounted) return;
+                        await _saveEpisode(advice);
+                        setState(() {
+                          _msgs.add({'role': 'bot', 'text': advice});
+                          _msgs.add({
+                            'role': 'bot',
+                            'text': _q('learned').replaceAll('{h}', hostLabel(_confirmedHost, widget.lang))
+                          });
+                          _adviceGiven = true;
+                          _busy = false;
+                        });
+                      },
+                child: Text(_tr('want_advice')),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

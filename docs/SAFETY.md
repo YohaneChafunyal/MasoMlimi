@@ -1,0 +1,5 @@
+- Critical livestock: fixed safety steps + refer
+- Farmer-facing procedure steps only if status=published
+- Draft procedures never returned by diagnosis
+- Products list empty unless expert published them
+- No generative treatment model

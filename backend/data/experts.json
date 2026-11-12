@@ -1,0 +1,50 @@
+[
+  {
+    "id": "2a1f41e1-b3b3-4100-9b11-0daa7dc92687",
+    "display_name": "james kabeya",
+    "role_label": "Extension officer",
+    "district": "Dowa",
+    "availability": "available",
+    "phone_e164": "+265997092924",
+    "supports_chat": true,
+    "supports_voice": true,
+    "supports_video": true,
+    "active": true
+  },
+  {
+    "id": "c46b0a6f-67cd-478b-8abe-7b753c4e23c7",
+    "display_name": "Marry Chikondi",
+    "role_label": "Extension officer",
+    "district": "Lilongwe",
+    "availability": "available",
+    "phone_e164": "+265997092924",
+    "supports_chat": true,
+    "supports_voice": true,
+    "supports_video": true,
+    "active": true
+  },
+  {
+    "id": "d1edd5e0-f421-4bb2-9e6f-a628d4fe3f0b",
+    "display_name": "ilunga joshua",
+    "role_label": "Extension officer",
+    "district": "Lilongwe",
+    "availability": "available",
+    "phone_e164": "+265997092924",
+    "supports_chat": true,
+    "supports_voice": true,
+    "supports_video": true,
+    "active": true
+  },
+  {
+    "id": "68888a2c-29ee-4410-bfc9-9133c39d1a7c",
+    "display_name": "misonzi acid",
+    "role_label": "Extension officer",
+    "district": "Lilongwe",
+    "availability": "available",
+    "phone_e164": "+2659970987",
+    "supports_chat": true,
+    "supports_voice": true,
+    "supports_video": true,
+    "active": true
+  }
+]

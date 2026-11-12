@@ -1,0 +1,484 @@
+{
+  "cursor": 14,
+  "items": [
+    {
+      "id": "454476d8-e12f-4f9d-acdb-8f85e66cf67b",
+      "condition_id": null,
+      "host_key": "maize",
+      "status": "published",
+      "title": {
+        "en": "Agricultural & Veterinary Disease Assessment Report"
+      },
+      "steps": {
+        "en": [
+          "Field Veterinary & Crop Pathology Report",
+          "Comprehensive Diagnostic Records • Unobstructed Clinical Documentation • Ref: [DOC-2026-004]",
+          "This report documents active surveillance data collected across regional livestock and crop production sites. All",
+          "photographs and clinical records are presented without text overlays, digital watermarks, or obscuring elements to ensure",
+          "complete visibility of pathology, lesion morphology, and diagnostic indicators.",
+          "Livestock Pathology: Small Ruminants & Swine",
+          "Fig 1.1: Caprine mucopurulent nasal discharge & severe",
+          "lip/perinasal lesions.",
+          "Clinical Finding: Profuse mucopurulent discharge, erosive",
+          "stomatitis, and crusting dermatitis around the labial",
+          "commisures. Note the absence of overlays on the affected",
+          "tissue interface.",
+          "Fig 1.2: Porcine acute presentation with cyanotic extremities.",
+          "Clinical Finding: Widespread cutaneous hyperaemia,",
+          "cyanosis of the pinnae (cyanotic ears), and ventral blotching",
+          "characteristic of acute viral hemorrhagic syndrome.",
+          "Fig 1.3: Bovine infectious keratoconjunctivitis & submandibular",
+          "edema.",
+          "Clinical Finding: Corneal opacity, active epiphora, and",
+          "prominent submandibular soft tissue swelling.",
+          "Fig 1.4: Avian respiratory distress & facial swelling.",
+          "Clinical Finding: Severe conjunctival swelling, depression,",
+          "and posture changes indicative of acute respiratory infection.",
+          "Diagnostic Assessment Bulletin Page 1 of 2",
+          "Agronomic Crop Pathology: Fungal & Bacterial Infections",
+          "Fig 2.1: Solanum lycopersicum leaf necrosis & fruit rot.",
+          "Pathology: Advanced necrotic lesioning with characteristic",
+          "white sporulation margins on leaf tissue alongside sunken,",
+          "brown-black concentric fruit lesions.",
+          "Fig 2.2: V-shaped chlorosis and black vein necrosis in Brassica"
+        ]
+      },
+      "prevention_steps": {
+        "en": []
+      },
+      "products": [],
+      "updated_at": "2026-10-22T11:29:14.769369+00:00"
+    },
+    {
+      "id": "82b88d66-f5ee-410f-a735-6e869256b9e2",
+      "condition_id": null,
+      "host_key": "maize",
+      "status": "published",
+      "title": {
+        "en": "Armyworm (maize)"
+      },
+      "steps": {
+        "en": [
+          "African Livestock and",
+          "and control. Each problem is set out in the same way: cause and spread, signs and symptoms, prevention, and",
+          "and control.",
+          "Labelled diagrams. Every species and crop has a full-page diagram with numbered parts. Look at the diagram for the animal or",
+          "plant, go through each numbered part, then read the list beneath it: it tells you what an abnormal sign looks like and which",
+          "Golden rules for farm health",
+          " Prevention is cheaper than cure: vaccinate on schedule, control ticks, flies and worms, keep housing clean and dry, feed well,",
+          "and provide clean water.",
+          " Isolate any sick animal or plant immediately and quarantine all new stock (animals 2-3 weeks, plants 1-2 weeks) before mixing.",
+          " Several different diseases look alike. Use this guide to narrow the possibilities, and ask a vet, animal health worker or extension",
+          "officer to confirm - especially before spending money on drugs or chemicals.",
+          " Report suspected notifiable diseases (marked NOTIFIABLE) to your District Veterinary or Agricultural Officer at once.",
+          " Use veterinary drugs and pesticides ONLY as the product label and a vet/extension officer direct: correct dose, correct species,",
+          "withdrawal period (animals) and pre-harvest interval (crops).",
+          " Wear gloves, boots and a mask when handling sick animals, carcasses, pesticides or aborted material, and wash hands",
+          "afterwards.",
+          "Zoonotic diseases - those that can pass from animals to people"
+        ]
+      },
+      "prevention_steps": {
+        "en": [
+          "Sign: and symptoms, prevention, and treatment of diseases,",
+          "Sign: Inside this guide",
+          "Sign: Species and crop health basics, vital signs and biosecurity",
+          "Sign: Nine labelled body and plant diagrams showing where to look",
+          "Sign: livestock and 48 crop problems: cause, signs, prevention, treatment",
+          "Sign: Notifiable and zoonotic disease warnings, and when to call a vet",
+          "Sign: Safe pesticide and animal-drug use, plus an outbreak action plan",
+          "Sign: IMPORTANT",
+          "Sign: This guide is for education and first-line farm guidance. It does not replace a",
+          "Sign: veterinarian, animal health worker or agricultural extension officer. Always confirm a",
+          "Sign: (e.g. ASF, FMD, PPR, Newcastle, avian influenza, anthrax) to the veterinary authorities.",
+          "Sign: African Livestock and Crop Health Guide",
+          "Sign: Educational guide - consult a vet or extension officer before treating. Follow product labels.",
+          "Sign: Page 2",
+          "Sign: Contents"
+        ]
+      },
+      "products": [
+        {
+          "name": "s",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Tomato Leafminer (Tuta absoluta)",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Insect pest - caterpillars",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "CAUSE AND",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "SPREAD",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Tiny moths lay eggs on leaves; larvae tunnel inside leaves, stems and fruit. Multiple generations a year; very destructi",
+          "note": "From source file (expert must verify before Publish)"
+        }
+      ],
+      "full_text": "African Livestock and\nCrop Health Guide\nSigns and symptoms, prevention, and treatment of diseases,\npests and parasites - with labelled diagrams\nCROPS:  Tomatoes  |  Cabbage  |  Maize  |  Beans  |  Sorghum\nInside this guide\n - Species and crop health basics, vital signs and biosecurity\n- Nine labelled body and plant diagrams showing where to look\n- 47 livestock and 48 crop problems: cause, signs, prevention, treatment\n- Notifiable and zoonotic disease warnings, and when to call a vet\n- Safe pesticide and animal-drug use, plus an outbreak action plan\nIMPORTANT\nThis guide is for education and first-line farm guidance. It does not replace a\nveterinarian, animal health worker or agricultural extension officer. Always confirm a\ndiagnosis, follow product labels and national laws, and report notifiable diseases\n(e.g. ASF, FMD, PPR, Newcastle, avian influenza, anthrax) to the veterinary authorities.\n\nAfrican Livestock and Crop Health Guide\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 2\nContents\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 3\n1. How to Use This Guide\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 6\nPART A - LIVESTOCK DISEASES, PESTS AND PARASITES\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 7\nA1. Chickens (Poultry)\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 12\nA2. Goats\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 17\nA3. Pigs\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 21\nA4. Cattle\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 27\nPART B - CROP DISEASES AND PESTS\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 28\nB1. Tomato\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 32\nB2. Cabbage\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 36\nB3. Maize\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 40\nB4. Common Beans\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 44\nB5. Sorghum\n  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 48\nQuick Symptom Lookup Tables\n\nAfrican Livestock and Crop Health Guide\n1. How to Use This Guide\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 3\n1. How to Use This Guide\nRead this first - it makes every later page easier to use.\nThis guide helps farmers, animal health workers, students and extension staff in African countries to recognise common\ndiseases, pests and parasites of four livestock species and five food crops, to prevent them, and to take sensible first steps in\ntreatment and control. Each problem is set out in the same way: cause and spread, signs and symptoms, prevention, and\ntreatment and control.\nLabelled diagrams. Every species and crop has a full-page diagram with numbered parts. Look at the diagram for the animal or\nplant, go through each numbered part, then read the list beneath it: it tells you what an abnormal sign looks like and which\ndisease it may point to. Then read the matching disease entry for details.\nGolden rules for farm health\n Prevention is cheaper than cure: vaccinate on schedule, control ticks, flies and worms, keep housing clean and dry, feed well,\nand provide clean water.\n Isolate any sick animal or plant immediately and quarantine all new stock (animals 2-3 weeks, plants 1-2 weeks) before mixing.\n Several different diseases look alike. Use this guide to narrow the possibilities, and ask a vet, animal health worker or extension\nofficer to confirm - especially before spending money on drugs or chemicals.\n Report suspected notifiable diseases (marked NOTIFIABLE) to your District Veterinary or Agricultural Officer at once.\n Use veterinary drugs and pesticides ONLY as the product label and a vet/extension officer direct: correct dose, correct species,\nwithdrawal period (animals) and pre-harvest interval (crops).\n Wear gloves, boots and a mask when handling sick animals, carcasses, pesticides or aborted material, and wash hands\nafterwards.\nZoonotic diseases - those that can pass from animals to people",
+      "source_filename": "African_Livestock_and_Crop_Health_Guide.pdf",
+      "updated_at": "2026-10-27T10:46:17.163685+00:00"
+    },
+    {
+      "id": "47f0519e-ccba-4370-b85d-b637979c7093",
+      "condition_id": null,
+      "host_key": "chicken",
+      "status": "draft",
+      "title": {
+        "en": "Armyworm (chicken)"
+      },
+      "steps": {
+        "en": [
+          "Chicken",
+          "Bright eyes, red comb, alert, eats and",
+          "drinks",
+          "Chickens",
+          "Flock wipe-outs; avian influenza can infect people",
+          "Anthrax",
+          "Cattle, goats",
+          "Sudden death; do not open carcass; deadly to people",
+          "Rift Valley fever",
+          "Cattle, goats, people",
+          "Abortion storms after rains; people infected by blood and milk",
+          "Lumpy skin disease, CBPP",
+          "Figure 1. Chicken - where to look for disease",
+          "Comb and wattles",
+          "Eyes and eyelids",
+          "Beak, nostrils, sinuses",
+          "Neck and windpipe",
+          "Crop and abdomen",
+          "Back feathers and skin",
+          "Wing",
+          "Vent (cloaca)",
+          "Shanks and feet",
+          "A healthy chicken has a bright red comb, clear eyes, clean nostrils and vent, smooth feathers and straight, scaly-free shanks. Numbers match the",
+          "table below.",
+          "No.",
+          "Body part / plant part",
+          "What to look for (and likely causes)",
+          "Comb and wattles",
+          "Pale or blue-purple (fowl cholera, anaemia from mites); white crusty or scabby warts (fowl pox)",
+          "Eyes and eyelids"
+        ]
+      },
+      "prevention_steps": {
+        "en": [
+          " Vaccinate: live LaSota or HB1 vaccine in drinking water or eye-drop; thermostable I-2 vaccine by eye-drop is suited to",
+          "village flocks. Repeat every 3-4 months as advised by the vet or extension officer",
+          " Quarantine new birds for 2 weeks; do not mix species, ages or birds from markets",
+          " Restrict visitors; footbath and handwashing at the coop door",
+          " Clean and disinfect houses, feeders and drinkers between flocks",
+          " Vaccinate with an intermediate Gumboro vaccine at 10-14 days, booster at 21-28 days (follow hatchery advice)",
+          " Buy chicks from breeder flocks vaccinated so chicks have maternal antibodies",
+          " All-in, all-out stocking; wash, disinfect and rest houses 2 weeks between batches",
+          " Keep different ages separate",
+          " Vaccinate by wing-web stab from 6-8 weeks, before the mosquito season; check for a 'take' (small scab) after 7-10",
+          "days",
+          " Drain stagnant water; use mosquito control; keep houses clean and dry",
+          " Isolate sick birds; do not mix vaccinated and unvaccinated flocks",
+          " Vaccinate day-old chicks (HVT vaccine) at the hatchery - this is the only effective control",
+          " Keep brooding chicks away from older birds; strict hygiene",
+          " Buy from reputable hatcheries",
+          " Keep litter dry; fix leaking drinkers; avoid overcrowding",
+          " Use coccidiostat in starter feed or vaccinate (ask the feed supplier or vet)",
+          " Clean drinkers and feeders often; rest and disinfect houses; rotate free-range yards",
+          " Control rodents and wild birds",
+          " Strict biosecurity; keep out wild birds and rodents; use clean water",
+          " All-in, all-out production; do not add new birds to an infected flock",
+          " Vaccinate where the disease is endemic (vaccines available from vets)",
+          " Buy chicks from Salmonella-tested hatcheries; blood-test and cull reactor breeders",
+          " Hygiene and disinfection; control rodents and flies",
+          " Vaccinate against fowl typhoid where recommended (9R vaccine)",
+          " Keep poultry away from wild birds and water bodies; cover feed and drinkers",
+          " Do not buy birds of unknown origin; avoid sharing equipment or crates",
+          " Wear gloves and a mask when handling sick or dead birds; wash hands thoroughly",
+          " Provide a dust-bathing area with sand and wood ash",
+          "Sign: AND",
+          "Sign:  Sudden deaths, sometimes with no earlier signs",
+          "Sign:  Greenish, watery diarrhoea; ruffled feathers; drooping wings; sleepy, huddled birds",
+          "Sign:  Gasping, coughing, sneezing, rattling breath; swollen head and eyelids",
+          "Sign:  Nervous signs: twisted neck (torticollis), tremors, circling, walking backwards, paralysis of legs or wings",
+          "Sign:  Sudden drop in egg laying; thin-shelled, rough or misshapen eggs",
+          "Sign:  Mortality can reach 80-100 percent in unvaccinated flocks",
+          "Sign: AND",
+          "Sign:  Sudden outbreak: many chicks sick within 1-2 days",
+          "Sign:  Ruffled feathers, huddling, dullness, trembling, reluctance to move",
+          "Sign:  Whitish or watery diarrhoea; soiled vent; birds peck at their own vent",
+          "Sign:  Dehydration; deaths peak on days 3-4 then fall",
+          "Sign:  Survivors are weak, stunted and have poor vaccine response (immune suppression)",
+          "Sign: AND",
+          "Sign:  Dry form: wart-like, yellow then dark scabs on comb, wattles, eyelids, beak corners and unfeathered legs"
+        ]
+      },
+      "products": [
+        {
+          "name": "s",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Tomato Leafminer (Tuta absoluta)",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Insect pest - caterpillars",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "CAUSE AND",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "SPREAD",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Tiny moths lay eggs on leaves; larvae tunnel inside leaves, stems and fruit. Multiple generations a year; very destructi",
+          "note": "From source file (expert must verify before Publish)"
+        }
+      ],
+      "full_text": "LIVESTOCK:  Chickens  |  Goats  |  Pigs  |  Cattle\nChicken\n40.6-43.0 °C\n-\n-\nBright eyes, red comb, alert, eats and\ndrinks\nChickens\nFlock wipe-outs; avian influenza can infect people\nAnthrax\nCattle, goats\nSudden death; do not open carcass; deadly to people\nRift Valley fever\nCattle, goats, people\nAbortion storms after rains; people infected by blood and milk\nLumpy skin disease, CBPP\nFigure 1. Chicken - where to look for disease\n1. Comb and wattles\n2. Eyes and eyelids\n3. Beak, nostrils, sinuses\n4. Neck and windpipe\n5. Crop and abdomen\n6. Back feathers and skin\n7. Wing\n8. Vent (cloaca)\n9. Shanks and feet\nA healthy chicken has a bright red comb, clear eyes, clean nostrils and vent, smooth feathers and straight, scaly-free shanks. Numbers match the\ntable below.\nNo.\nBody part / plant part\nWhat to look for (and likely causes)\n1\nComb and wattles\nPale or blue-purple (fowl cholera, anaemia from mites); white crusty or scabby warts (fowl pox)\n2\nEyes and eyelids\nSwollen, sticky, closed eyelids; foamy eyes; grey or cloudy iris (Marek's); pox scabs (fowl pox)\n3\nBeak, nostrils, sinuses\nNasal discharge, sneezing, gaping, facial swelling (Newcastle, coryza, gapeworm, pox mouth lesions)\n4\nNeck and windpipe\nTwisted neck, tremors, rattling or wheezing breath (Newcastle disease, bronchitis)\n5\nCrop and abdomen\nEmpty or sour crop; swollen belly (ascites); worms and weight loss\n6\nBack feathers and skin\nLice, mites, scabs, feather loss, scratching; heat-stress or skin pox lesions\n7\nWing\nDrooping or paralysed wing (Marek's, Newcastle); bleeding or pox lesions\n8\nVent (cloaca)\nPasted, bloody, white or green droppings (coccidiosis, pullorum, Newcastle); mites and lice\n9\nShanks and feet\nScaly-leg mite crusts, swollen joints, leg paralysis; bleeding spots (avian influenza)\n\nAfrican Livestock and Crop Health Guide\nA1. Chickens (Poultry)\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 8\n1. Newcastle Disease (ND)\nViral - NOTIFIABLE - most common cause of village flock wipe-outs\nCAUSE AND\nSPREAD\nVirulent avian paramyxovirus. Spreads by bird-to-bird contact, droplets, contaminated feed, water, cages, vehicles, shoes,\nlive-bird markets and apparently healthy carrier birds. Found in all African countries.\nSIGNS AND\nSYMPTOMS\n Sudden deaths, sometimes with no earlier signs\n Greenish, watery diarrhoea; ruffled feathers; drooping wings; sleepy, huddled birds\n Gasping, coughing, sneezing, rattling breath; swollen head and eyelids\n Nervous signs: twisted neck (torticollis), tremors, circling, walking backwards, paralysis of legs or wings\n Sudden drop in egg laying; thin-shelled, rough or misshapen eggs\n Mortality can reach 80-100 percent in unvaccinated flocks\nPREVENTION\n Vaccinate: live LaSota or HB1 vaccine in drinking water or eye-drop; thermostable I-2 vaccine by eye-drop is suited to\nvillage flocks. Repeat every 3-4 months as advised by the vet or extension officer\n Quarantine new birds for 2 weeks; do not mix species, ages or birds from markets\n Restrict visitors; footbath and handwashing at the coop door\n Clean and disinfect houses, feeders and drinkers between flocks\nTREATMENT\nAND CONTROL\n No cure; antibiotics only control secondary bacterial infection\n Isolate sick birds; give electrolytes and vitamins in clean water as supportive care\n Report suspected outbreaks to the District Veterinary Officer\n Bury dead birds deeply with lime or burn them; do not sell or eat sick birds\n Vaccinate healthy neighbouring birds only on veterinary advice\n2. Infectious Bursal Disease (Gumboro)\nViral - affects chicks 3 to 6 weeks old\nCAUSE AND\nSPREAD\nBirnavirus that destroys the bursa of Fabricius (the immune organ), so birds become easily infected by other diseases.\nVery hardy virus that survives in houses for months; spreads by contaminated litter, equipment and people.\nSIGNS AND\nSYMPTOMS\n Sudden outbreak: many chicks sick within 1-2 days\n Ruffled feathers, huddling, dullness, trembling, reluctance to move\n Whitish or watery diarrhoea; soiled vent; birds peck at their own vent\n Dehydration; deaths peak on days 3-4 then fall\n Survivors are weak, stunted and have poor vaccine response (immune suppression)\nPREVENTION\n Vaccinate with an intermediate Gumboro vaccine at 10-14 days, booster at 21-28 days (follow hatchery advice)\n Buy chicks from breeder flocks vaccinated so chicks have maternal antibodies\n All-in, all-out stocking; wash, disinfect and rest houses 2 weeks between batches\n Keep different ages separate\nTREATMENT\nAND CONTROL\n No specific treatment\n Supportive: clean water with electrolytes and glucose, vitamins A, E and K\n Keep chicks warm and reduce stress\n Antibiotics only for secondary infections, as advised by a vet\n\nAfrican Livestock and Crop Health Guide\nA1. Chickens (Poultry)\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 9\n3. Fowl Pox\nViral - spread by mosquitoes\nCAUSE AND\nSPREAD\nAvipoxvirus entering through skin wounds, mosquito and mite bites or contact. Common in the rainy season and where\nthere is stagnant water.\nSIGNS AND\nSYMPTOMS\n Dry form: wart-like, yellow then dark scabs on comb, wattles, eyelids, beak corners and unfeathered legs\n Wet (diphtheritic) form: yellow, cheesy patches in mouth, tongue, throat and windpipe\n Difficulty eating, swallowing and breathing; birds may gape\n Eyelids swell shut; reduced growth and egg production\nPREVENTION\n Vaccinate by wing-web stab from 6-8 weeks, before the mosquito season; check for a 'take' (small scab) after 7-10\ndays\n Drain stagnant water; use mosquito control; keep houses clean and dry\n Isolate sick birds; do not mix vaccinated and unvaccinated flocks\nTREATMENT\nAND CONTROL\n No cure; disease runs 3-4 weeks and recovered birds are immune\n Gently remove scabs and touch lesions with iodine or antiseptic\n Vitamin A and C in water; soft food for birds with mouth lesions\n Antibiotics for secondary bacterial infections as advised by a vet\n4. Marek's Disease\nViral - tumour disease of growing birds 6 to 20 weeks\nCAUSE AND\nSPREAD\nHerpesvirus shed in feather dander and dust, carried on wind and equipment. Birds are infected as chicks but show signs\nlater.\nSIGNS AND\nSYMPTOMS\n Paralysis of one or both legs: one leg stretched forward, one backward ('doing the splits')\n Drooping wings, twisted neck, difficulty standing\n Grey or cloudy eye (grey iris) and irregular pupil; blindness\n Enlarged, hard feather follicles and skin lumps; tumours in organs\n Weight loss, pale comb, deaths\nPREVENTION\n Vaccinate day-old chicks (HVT vaccine) at the hatchery - this is the only effective control\n Keep brooding chicks away from older birds; strict hygiene\n Buy from reputable hatcheries\nTREATMENT\nAND CONTROL\n No treatment; infected birds remain carriers\n Cull paralysed or sick birds humanely and dispose of them safely\n5. Coccidiosis\nProtozoal - very common in damp litter\nCAUSE AND\nSPREAD\nEimeria parasites in droppings. Birds swallow oocysts from contaminated litter, water and feed. Most severe in chicks 3-8\nweeks old, in wet and overcrowded conditions.\nSIGNS AND\nSYMPTOMS\n Bloody or brown droppings (caecal form) or watery pale droppings\n Ruffled feathers, huddling, closed eyes, pale comb and wattles\n Poor appetite and thirst; weight loss; poor growth\n Pasted, dirty vents; sudden deaths in severe outbreaks\nPREVENTION\n Keep litter dry; fix leaking drinkers; avoid overcrowding\n Use coccidiostat in starter feed or vaccinate (ask the feed supplier or vet)\n Clean drinkers and feeders often; rest and disinfect houses; rotate free-range yards\n Control rodents and wild birds\nTREATMENT\nAND CONTROL\n Amprolium or sulphonamide (e.g. sulfadimethoxine) or toltrazuril in drinking water - follow the product label and treat for\n3-5 days\n Vitamin K and vitamin A to reduce bleeding and help recovery\n Replace wet litter, provide clean water and electrolytes\n Observe the withdrawal period before selling eggs or meat\n\nAfrican Livestock and Crop Health Guide\nA1. Chickens (Poultry)\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 10\n6. Fowl Cholera\nBacterial (Pasteurella multocida)\nCAUSE AND\nSPREAD\nSpread by sick birds, wild birds, rodents, contaminated water and equipment. Occurs in acute and chronic forms.\nSIGNS AND\nSYMPTOMS\n Acute: sudden deaths in apparently healthy birds; high fever; greenish-yellow diarrhoea\n Swollen, bluish-purple comb and wattles; laboured breathing\n Chronic: swollen wattles filled with cheesy pus, swollen joints, lameness, nasal discharge\nPREVENTION\n Strict biosecurity; keep out wild birds and rodents; use clean water\n All-in, all-out production; do not add new birds to an infected flock\n Vaccinate where the disease is endemic (vaccines available from vets)\nTREATMENT\nAND CONTROL\n Sulphonamides or tetracyclines in water, or injectable antibiotics, as prescribed by a vet\n Cull chronic carriers; clean and disinfect the house\n7. Pullorum Disease and Fowl Typhoid\nBacterial (Salmonella Pullorum / Gallinarum) - passed through eggs\nCAUSE AND\nSPREAD\nInfected breeder hens pass Salmonella to chicks inside the egg. Also spreads through contaminated litter, feed and carrier\nbirds.\nSIGNS AND\nSYMPTOMS\n Pullorum (chicks 0-3 weeks): white chalky diarrhoea pasting the vent, huddling near heat, gasping, many deaths in the\nfirst 2 weeks\n Fowl typhoid (older birds): pale comb, yellow-green diarrhoea, fever, thirst, loss of appetite, drop in egg production,\ndeaths\n Dead-in-shell embryos and weak chicks\nPREVENTION\n Buy chicks from Salmonella-tested hatcheries; blood-test and cull reactor breeders\n Hygiene and disinfection; control rodents and flies\n Vaccinate against fowl typhoid where recommended (9R vaccine)\nTREATMENT\nAND CONTROL\n Antibiotics (sulphonamides, quinolones, etc.) reduce deaths only on a vet's prescription, but survivors stay carriers\n Cull the whole infected breeder flock where possible\n8. Highly Pathogenic Avian Influenza (HPAI)\nViral - NOTIFIABLE - ZOONOTIC (can infect people)\nCAUSE AND\nSPREAD\nInfluenza A virus (H5 and H7 types) introduced by wild waterfowl, live-bird trade and contaminated equipment; spreads\nvery fast between birds.\nSIGNS AND\nSYMPTOMS\n Sudden high deaths in many birds within 24-48 hours\n Swollen head and face; purple or blue comb and wattles\n Bleeding spots on the shanks (legs) and under the skin\n Respiratory distress, diarrhoea, nervous signs, sharp drop in eggs\nPREVENTION\n Keep poultry away from wild birds and water bodies; cover feed and drinkers\n Do not buy birds of unknown origin; avoid sharing equipment or crates\n Wear gloves and a mask when handling sick or dead birds; wash hands thoroughly\nTREATMENT\nAND CONTROL\n DO NOT TREAT - report immediately to the veterinary authorities\n Authorities will cull (stamping out), disinfect and control movement\n Do not slaughter, sell or eat sick birds; do not move birds out of the area\n\nAfrican Livestock and Crop Health Guide\nA1. Chickens (Poultry)\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 11\n9. External Parasites: Mites, Lice, Fleas and Scaly-leg Mite\nParasitic - common in free-range and deep-litter houses\nCAUSE AND\nSPREAD\nRed mites hide in cracks, perches and nest boxes and bite at night; northern fowl mites and lice live on the bird; sticktight\nfleas cling to the head; scaly-leg mites burrow under shank scales.\nSIGNS AND\nSYMPTOMS\n Restless birds at night, pale comb (anaemia), reluctance to sit in nest boxes\n Scratching, feather loss, scabs, dirty or broken feathers; lice and eggs at the feather base and vent\n Red or grey specks of mites on perches and eggs\n Scaly leg: raised, crusty, thickened scales on the shanks; lameness\n Drop in egg production and weight loss\nPREVENTION\n Provide a dust-bathing area with sand and wood ash\n Seal cracks, clean and replace litter and nesting material regularly; use metal or plastic perches\n Inspect birds and perches weekly; quarantine new birds\n Do not overcrowd\nTREATMENT\nAND CONTROL\n Spray or dust birds and house with an approved product (e.g. permethrin or cypermethrin spray, carbaryl dust) following\nthe label; treat cracks and perches; repeat after 7-10 days\n Scaly leg: soak legs in warm soapy water then apply petroleum jelly, sulphur ointment or approved product\n Observe label withdrawal times for eggs and meat\n10. Internal Parasites: Roundworms, Tapeworms and Gapeworm\nParasitic - worm burden is highest in free-range birds\nCAUSE AND\nSPREAD\nBirds swallow worm eggs from contaminated soil, litter, snails, beetles or earthworms. Gapeworm (Syngamus) lives in the\nwindpipe.\nSIGNS AND\nSYMPTOMS\n Weight loss, poor growth, pale comb and wattles\n Diarrhoea, soiled vents, sometimes worms visible in droppings\n Fall in egg production\n Gapeworm: gaping, head shaking, coughing and gasping (looks like a respiratory disease)\nPREVENTION\n Keep litter dry; rotate runs; separate young and old birds\n Deworm regularly (every 2-3 months for free-range flocks) and before laying\n Control intermediate hosts (snails, earthworms, beetles); clean feeders and drinkers\nTREATMENT\nAND CONTROL\n Piperazine, levamisole, fenbendazole or albendazole in feed or water - follow the label\n Repeat after 2-3 weeks; give vitamins to help recovery\n Observe withdrawal periods for eggs and meat\n\nAfrican Livestock and Crop Health Guide\nA2. Goats\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 12\nA2. Goats\nGoats are hardy but suffer badly from PPR, worms, pneumonia, ticks and foot problems.",
+      "source_filename": "African_Livestock_and_Crop_Health_Guide.pdf",
+      "updated_at": "2026-10-27T10:45:51.616785+00:00"
+    },
+    {
+      "id": "efa19723-236d-45ec-ace6-114cabfc6a6d",
+      "condition_id": null,
+      "host_key": "goats",
+      "status": "draft",
+      "title": {
+        "en": "Armyworm (goats)"
+      },
+      "steps": {
+        "en": [
+          "Goat",
+          "Rumen moves 1-1.5 times a minute",
+          "Pig",
+          "Piglets run slightly higher",
+          "Figure 2. Goat - where to look for disease",
+          "Eyes and eyelid lining",
+          "Nose and muzzle",
+          "Lips, gums, mouth",
+          "Jaw and throat",
+          "Neck and shoulder glands",
+          "Chest and lungs",
+          "Front hooves",
+          "Back and coat",
+          "Tail, anus, rear",
+          "Left flank (rumen)",
+          "Udder and teats",
+          "Hind hooves and legs",
+          "Check the eyelid colour (FAMACHA), jaw, nose, mouth, flanks, udder, feet and rear end of every goat regularly.",
+          "No.",
+          "Body part / plant part",
+          "What to look for (and likely causes)",
+          "Eyes and eyelid lining",
+          "Pale or white inner eyelid = anaemia (FAMACHA 4-5, haemonchosis); sticky discharge (PPR)",
+          "Nose and muzzle",
+          "Crusty or purulent nasal discharge (PPR, CCPP, pneumonia); scabs (orf)",
+          "Lips, gums, mouth",
+          "Ulcers and erosions (PPR), scabby sores (orf), blisters (FMD), foul breath",
+          "Jaw and throat",
+          "'Bottle jaw' soft swelling under the jaw (stomach worms, liver fluke)",
+          "Neck and shoulder glands"
+        ]
+      },
+      "prevention_steps": {
+        "en": [
+          " Vaccinate - a single dose of live attenuated PPR vaccine gives long (often lifelong) immunity; vaccinate kids from about",
+          "months",
+          " Quarantine new animals for 3 weeks; avoid mixing flocks at markets and water points",
+          " Report outbreaks and restrict movements",
+          " Vaccinate (CCPP vaccine, annual) in endemic areas",
+          " Quarantine new goats; avoid contact with infected herds and shared grazing",
+          " Use the FAMACHA eye chart to select animals for treatment (targeted selective treatment)",
+          " Rotate grazing; do not overstock; avoid grazing very wet or short pasture; allow browsing",
+          " Do not underdose - this builds resistance",
+          " Quarantine and deworm new animals; use faecal egg counts to monitor",
+          " Control ticks by dipping or spraying with an approved acaricide",
+          " Allow young animals to be infected early in tick-endemic areas where this is advised by the vet",
+          " Be careful when introducing animals from tick-free areas",
+          " Vaccinate with live scab vaccine where available; avoid abrasive browse",
+          " Quarantine new animals; clean, disinfect and rest contaminated pens",
+          " Wear gloves when handling sick animals to avoid infection",
+          " Trim hooves regularly; keep floors dry and well-drained",
+          " Footbath (10 percent zinc sulphate) once a week during the wet season",
+          " Quarantine and inspect feet of newly bought goats; vaccinate where available",
+          " Vaccinate with multivalent clostridial vaccine (kids from 4-6 weeks, booster 4 weeks later; adults annually and before",
+          "kidding)",
+          " Change feed gradually over 7-10 days; avoid overfeeding grain; feed fibre",
+          " Keep pens clean and dry; raise feeders and water troughs off the floor",
+          " Avoid overcrowding and stress at weaning; provide coccidiostat in creep feed if advised",
+          " Regular dipping, spraying or pour-on of the herd",
+          " Quarantine and treat new goats; clean and disinfect housing; avoid overcrowding",
+          " Wash hands and udder; dry-wipe teats before milking; dip teats after milking",
+          " Keep bedding clean and dry; milk sick animals last; dry-doe treatment",
+          " Cull chronic cases",
+          " Test and cull positive animals; vaccinate kids (Rev-1) where the national programme allows",
+          "Sign: AND",
+          "Sign:  High fever (40-41 °C), dullness, loss of appetite",
+          "Sign:  Watery then thick, sticky yellow discharge from eyes and nose, crusting and sealing the eyelids and nostrils",
+          "Sign:  Ulcers and erosions on gums, tongue and inside the lips; foul breath, drooling",
+          "Sign:  Severe, foul-smelling, watery diarrhoea and dehydration",
+          "Sign:  Coughing and rapid breathing (pneumonia); abortion; death within 5-10 days, especially in kids",
+          "Sign: AND",
+          "Sign:  High fever, severe cough, rapid and painful breathing",
+          "Sign:  Standing with neck stretched, elbows out; reluctance to move",
+          "Sign:  Nasal discharge, frothy saliva; weight loss",
+          "Sign:  High deaths in adults and kids",
+          "Sign: AND",
+          "Sign:  Pale or white eyelid lining and gums (anaemia) - FAMACHA score 4-5 means treat",
+          "Sign:  'Bottle jaw': soft swelling under the lower jaw; sometimes swollen belly",
+          "Sign:  Weakness, rough coat, weight loss, poor milk production, lagging behind the herd"
+        ]
+      },
+      "products": [
+        {
+          "name": "s",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Tomato Leafminer (Tuta absoluta)",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Insect pest - caterpillars",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "CAUSE AND",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "SPREAD",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Tiny moths lay eggs on leaves; larvae tunnel inside leaves, stems and fruit. Multiple generations a year; very destructi",
+          "note": "From source file (expert must verify before Publish)"
+        }
+      ],
+      "full_text": "Goat\n38.5-40.0 °C\n70-90\n12-30\nRumen moves 1-1.5 times a minute\nPig\n38.0-39.5 °C\n60-90\n10-30\nPiglets run slightly higher\nFigure 2. Goat - where to look for disease\n1. Eyes and eyelid lining\n2. Nose and muzzle\n3. Lips, gums, mouth\n4. Jaw and throat\n5. Neck and shoulder glands\n6. Chest and lungs\n7. Front hooves\n8. Back and coat\n9. Tail, anus, rear\n10. Left flank (rumen)\n11. Udder and teats\n12. Hind hooves and legs\nCheck the eyelid colour (FAMACHA), jaw, nose, mouth, flanks, udder, feet and rear end of every goat regularly.\nNo.\nBody part / plant part\nWhat to look for (and likely causes)\n1\nEyes and eyelid lining\nPale or white inner eyelid = anaemia (FAMACHA 4-5, haemonchosis); sticky discharge (PPR)\n2\nNose and muzzle\nCrusty or purulent nasal discharge (PPR, CCPP, pneumonia); scabs (orf)\n3\nLips, gums, mouth\nUlcers and erosions (PPR), scabby sores (orf), blisters (FMD), foul breath\n4\nJaw and throat\n'Bottle jaw' soft swelling under the jaw (stomach worms, liver fluke)\n5\nNeck and shoulder glands\nSwollen lymph nodes; lumps or abscesses (caseous lymphadenitis)\n6\nChest and lungs\nCough, fast or painful breathing, stands with neck extended (CCPP, pneumonia)\n7\nFront hooves\nLameness, foul-smelling interdigital rot, overgrown hooves (foot rot, foot scald)\n8\nBack and coat\nScabs, hair loss, ticks, lice (mange); rough coat (worms)\n9\nTail, anus, rear\nSoiled, pasted tail and watery diarrhoea (PPR, coccidiosis, worms)\n10\nLeft flank (rumen)\nSwollen left flank = bloat or enterotoxaemia; empty flank = not eating\n11\nUdder and teats\nHot, hard, swollen quarter or abnormal milk (mastitis); scabs on teats (orf)\n12\nHind hooves and legs\nLameness, swollen joints (CAE), foot rot\n\nAfrican Livestock and Crop Health Guide\nA2. Goats\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 13\n1. Peste des Petits Ruminants (PPR) - 'Goat Plague'\nViral - NOTIFIABLE - very high mortality\nCAUSE AND\nSPREAD\nMorbillivirus of goats and sheep. Spreads by close contact, coughing and discharges, and through markets, shared water\nand trade animals. Found across Africa.\nSIGNS AND\nSYMPTOMS\n High fever (40-41 °C), dullness, loss of appetite\n Watery then thick, sticky yellow discharge from eyes and nose, crusting and sealing the eyelids and nostrils\n Ulcers and erosions on gums, tongue and inside the lips; foul breath, drooling\n Severe, foul-smelling, watery diarrhoea and dehydration\n Coughing and rapid breathing (pneumonia); abortion; death within 5-10 days, especially in kids\nPREVENTION\n Vaccinate - a single dose of live attenuated PPR vaccine gives long (often lifelong) immunity; vaccinate kids from about\n3-4 months\n Quarantine new animals for 3 weeks; avoid mixing flocks at markets and water points\n Report outbreaks and restrict movements\nTREATMENT\nAND CONTROL\n No antiviral cure\n Supportive care: antibiotics (e.g. oxytetracycline) for secondary pneumonia, oral rehydration, clean eyes, nose and\nmouth gently, good feed and shelter\n Isolate sick animals and report to veterinary services\n2. Contagious Caprine Pleuropneumonia (CCPP)\nBacterial (Mycoplasma capricolum capripneumoniae)\nCAUSE AND\nSPREAD\nSpread by coughing and close contact; a highly contagious lung disease of goats found in drier regions across Africa.\nSIGNS AND\nSYMPTOMS\n High fever, severe cough, rapid and painful breathing\n Standing with neck stretched, elbows out; reluctance to move\n Nasal discharge, frothy saliva; weight loss\n High deaths in adults and kids\nPREVENTION\n Vaccinate (CCPP vaccine, annual) in endemic areas\n Quarantine new goats; avoid contact with infected herds and shared grazing\nTREATMENT\nAND CONTROL\n Early treatment: tylosin, long-acting oxytetracycline, florfenicol or tilmicosin as prescribed by a vet\n Isolate sick goats; provide shelter and clean water\n Report suspected outbreaks\n3. Haemonchosis (Barber's Pole Worm) and Other Stomach Worms\nParasitic - the biggest production killer of goats in Africa\nCAUSE AND\nSPREAD\nWorm larvae are eaten with grass. Haemonchus contortus sucks blood in the abomasum; worm eggs are passed in dung\nand hatch rapidly in warm, wet weather.\nSIGNS AND\nSYMPTOMS\n Pale or white eyelid lining and gums (anaemia) - FAMACHA score 4-5 means treat\n 'Bottle jaw': soft swelling under the lower jaw; sometimes swollen belly\n Weakness, rough coat, weight loss, poor milk production, lagging behind the herd\n Dark or scouring droppings; sudden death in kids and heavily infected animals\nPREVENTION\n Use the FAMACHA eye chart to select animals for treatment (targeted selective treatment)\n Rotate grazing; do not overstock; avoid grazing very wet or short pasture; allow browsing\n Do not underdose - this builds resistance\n Quarantine and deworm new animals; use faecal egg counts to monitor\nTREATMENT\nAND CONTROL\n Use an effective dewormer (albendazole, fenbendazole, levamisole, closantel or ivermectin) at the correct dose for goat\nbodyweight; goats usually need a higher dose than sheep or cattle of some products - check with the vet or label\n Give good protein feed, iron and vitamin B12 to anaemic animals\n Observe the milk and meat withdrawal period\n\nAfrican Livestock and Crop Health Guide\nA2. Goats\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 14\n4. Heartwater\nRickettsial (Ehrlichia ruminantium) - tick-borne (Amblyomma ticks)\nCAUSE AND\nSPREAD\nCarried by bont ticks. Affects goats, sheep and cattle in many parts of Africa; new animals brought into tick areas are most\nat risk.\nSIGNS AND\nSYMPTOMS\n Sudden high fever and loss of appetite\n Nervous signs: walking in circles, high-stepping gait, twitching eyelids, chewing movements, convulsions\n Fluid in the chest and around the heart; laboured breathing\n Sudden death, sometimes with no earlier signs\nPREVENTION\n Control ticks by dipping or spraying with an approved acaricide\n Allow young animals to be infected early in tick-endemic areas where this is advised by the vet\n Be careful when introducing animals from tick-free areas\nTREATMENT\nAND CONTROL\n Early treatment with oxytetracycline (high dose, long-acting) as prescribed by the vet\n Supportive care; keep animals calm in shade with clean water\n5. Orf (Contagious Ecthyma)\nViral - ZOONOTIC (people can catch it)\nCAUSE AND\nSPREAD\nParapoxvirus spreading by contact and scabs left on fences, feeding troughs and thorny browse. Common in kids and\nlambs.\nSIGNS AND\nSYMPTOMS\n Blisters then thick, crusty scabs on lips, nostrils, muzzle and around the mouth\n Lesions on teats of does and sometimes on feet or genitals\n Kids refuse to suckle and lose weight; sore mouth\nPREVENTION\n Vaccinate with live scab vaccine where available; avoid abrasive browse\n Quarantine new animals; clean, disinfect and rest contaminated pens\n Wear gloves when handling sick animals to avoid infection\nTREATMENT\nAND CONTROL\n Self-limiting in 2-4 weeks; no specific treatment\n Clean lesions gently with antiseptic; apply protective ointment; give soft feed\n Antibiotics for secondary infection; fly repellent on open sores\n Hand-feed kids that cannot suckle\n6. Foot Rot and Foot Scald\nBacterial (Dichelobacter nodosus, Fusobacterium)\nCAUSE AND\nSPREAD\nOccurs in wet, muddy conditions and overgrown hooves; spreads from infected hooves to others on shared soil.\nSIGNS AND\nSYMPTOMS\n Lameness, kneeling to graze, reluctance to walk\n Red, swollen, moist skin between toes; foul smell\n Hoof horn separates and peels away; pus under the sole\nPREVENTION\n Trim hooves regularly; keep floors dry and well-drained\n Footbath (10 percent zinc sulphate) once a week during the wet season\n Quarantine and inspect feet of newly bought goats; vaccinate where available\nTREATMENT\nAND CONTROL\n Trim away damaged horn; clean wound\n Apply topical oxytetracycline spray or antiseptic; soak feet in zinc sulphate or copper sulphate footbath\n Injectable long-acting oxytetracycline or penicillin in severe cases (vet)\n Keep animals on clean, dry ground\n\nAfrican Livestock and Crop Health Guide\nA2. Goats\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 15\n7. Enterotoxaemia (Overeating Disease)\nBacterial (Clostridium perfringens types C and D)\nCAUSE AND\nSPREAD\nGut bacteria multiply and release toxin after a sudden change to rich feed, lush pasture or excess grain.\nSIGNS AND\nSYMPTOMS\n Sudden death of the best-fed, fastest-growing kids\n Abdominal pain, bloating, kicking at belly\n Profuse diarrhoea; convulsions and paddling\nPREVENTION\n Vaccinate with multivalent clostridial vaccine (kids from 4-6 weeks, booster 4 weeks later; adults annually and before\nkidding)\n Change feed gradually over 7-10 days; avoid overfeeding grain; feed fibre\nTREATMENT\nAND CONTROL\n Antitoxin and penicillin if caught early; the course is often too rapid\n Reduce feed, provide fluids, call a vet\n8. Coccidiosis in Kids\nProtozoal (Eimeria)\nCAUSE AND\nSPREAD\nKids pick up oocysts from dirty, wet, overcrowded pens and contaminated feeding areas. Most common at 3-8 weeks and\nat weaning.\nSIGNS AND\nSYMPTOMS\n Diarrhoea (may be dark or bloody), straining, soiled tail\n Dehydration, rough coat, poor growth, weight loss\n Death in severe cases\nPREVENTION\n Keep pens clean and dry; raise feeders and water troughs off the floor\n Avoid overcrowding and stress at weaning; provide coccidiostat in creep feed if advised\nTREATMENT\nAND CONTROL\n Amprolium, sulphonamide or toltrazuril as per label or vet\n Oral rehydration solution; separate and keep warm\n9. Mange, Lice and Ticks\nParasitic - skin\nCAUSE AND\nSPREAD\nSarcoptes or Psoroptes mites burrow in skin; lice live in the coat; ticks feed on blood and spread disease. Spread by\ncontact and shared housing.\nSIGNS AND\nSYMPTOMS\n Intense itching and rubbing; scabs, crusts and hair loss especially on face, ears, legs, belly\n Thickened, wrinkled skin; weight loss and poor condition\n Lice: restlessness, dull coat. Ticks: visible ticks on ears, udder, groin; anaemia\nPREVENTION\n Regular dipping, spraying or pour-on of the herd\n Quarantine and treat new goats; clean and disinfect housing; avoid overcrowding\nTREATMENT\nAND CONTROL\n Ivermectin injection (repeat after 10-14 days) or amitraz or pyrethroid sprays and washes per label\n Treat the whole herd and the pens; separate heavily infested animals\n Observe withdrawal periods for milk and meat\n\nAfrican Livestock and Crop Health Guide\nA2. Goats\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 16\n10. Mastitis\nBacterial (Staphylococcus, Streptococcus, E. coli)\nCAUSE AND\nSPREAD\nBacteria enter through the teat canal from dirty bedding, unclean hands or injury.\nSIGNS AND\nSYMPTOMS\n Hot, swollen, hard, painful half of the udder\n Watery, clotted, bloody or yellow milk; reduced milk yield\n Fever and loss of appetite; kids refuse to suckle\n In severe cases the udder turns blue-black and cold (gangrenous mastitis)\nPREVENTION\n Wash hands and udder; dry-wipe teats before milking; dip teats after milking\n Keep bedding clean and dry; milk sick animals last; dry-doe treatment\n Cull chronic cases\nTREATMENT\nAND CONTROL\n Strip out the affected side often; apply warm compresses\n Intramammary antibiotic infusion and injectable antibiotics as prescribed by the vet; anti-inflammatory\n Discard milk during treatment and withdrawal period\n11. Brucellosis\nBacterial (Brucella melitensis) - ZOONOTIC\nCAUSE AND\nSPREAD\nSpread through aborted foetuses, placenta, birth fluids and milk. Humans get 'Malta fever' from raw milk or contact.\nSIGNS AND\nSYMPTOMS\n Abortion in the last third of pregnancy; retained placenta\n Weak kids; reduced milk; swollen testicles in bucks; joint swelling and lameness\nPREVENTION\n Test and cull positive animals; vaccinate kids (Rev-1) where the national programme allows\n Boil or pasteurise milk; wear gloves and boots when handling aborted material\n Isolate aborting does; dispose of foetuses and placenta safely\nTREATMENT\nAND CONTROL\n No practical treatment; cull infected animals under veterinary guidance\n12. Bloat (Ruminal Tympany)\nMetabolic - emergency\nCAUSE AND\nSPREAD\nGas builds up in the rumen after eating lush wet legumes, grain, or after choking.\nSIGNS AND\nSYMPTOMS\n Swollen left flank, distress, grunting, kicking at the belly\n Difficulty breathing, salivation; collapse and death within hours\nPREVENTION\n Do not turn hungry goats onto lush legumes or wet pasture; feed dry hay first\n Introduce grain and new feeds gradually\nTREATMENT\nAND CONTROL\n Stand the animal with front legs raised; walk it\n Give vegetable oil or an anti-bloat drench; pass a stomach tube to release gas\n In emergencies a vet may puncture the rumen\n\nAfrican Livestock and Crop Health Guide\nA3. Pigs\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 17\nA3. Pigs\nPig farming is growing fast; African swine fever and poor biosecurity are the biggest threats.\nFigure 3. Pig - where to look for disease\n1. Ears\n2. Eyes\n3. Snout and nostrils\n4. Mouth and tongue\n5. Front hooves\n6. Back and flanks (skin)\n7. Tail, anus, hind end\n8. Chest and lungs\n9. Belly and teats\n10. Hind hooves and legs\nExamine ears, skin, snout, eyes, belly and feet. Many pig diseases show first on the ears and belly skin.\nNo.\nBody part / plant part\nWhat to look for (and likely causes)\n1\nEars\nRed or purple blotches (ASF, classical swine fever); crusting and scabs; ticks\n2\nEyes\nReddish eyes with sticky discharge (swine fever); swollen eyelids (oedema disease)\n3\nSnout and nostrils\nDischarge, sneezing, twisted snout; blisters (FMD)\n4\nMouth and tongue\nBlisters or ulcers (FMD); drooling; cysts under tongue (pork measles)\n5\nFront hooves\nLameness, blisters on the coronary band (FMD), overgrown or cracked hooves\n6\nBack and flanks (skin)\nDiamond-shaped red lesions (erysipelas); scabs and itching (mange); hair loss\n7\nTail, anus, hind end\nDiarrhoea, blood in dung, rectal prolapse; sore, bitten tail\n8\nChest and lungs\nCough, laboured abdominal breathing, fever (pneumonia, ASF)\n9\nBelly and teats\nPurple discolouration of belly (ASF); mastitis in sows; wet or soiled underline\n10\nHind hooves and legs\nSwollen joints, lameness (arthritis), foot lesions\n\nAfrican Livestock and Crop Health Guide\nA3. Pigs\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 18\n1. African Swine Fever (ASF)\nViral - NOTIFIABLE - no vaccine or treatment (as at time of writing)\nCAUSE AND\nSPREAD\nDNA virus that spreads by contact with sick pigs, warthogs and bushpigs, soft ticks (Ornithodoros), contaminated pork,\nswill feeding, vehicles, boots and equipment. Survives long in pork and the environment.\nSIGNS AND\nSYMPTOMS\n High fever (40-42 °C); loss of appetite; huddling; weakness\n Red to purple blotches on ears, snout, belly, inner legs and tail\n Vomiting, bloody diarrhoea, laboured breathing, cough\n Abortion in sows; sudden deaths - mortality up to 100 percent in unvaccinated herds\n Cannot be reliably distinguished from classical swine fever without laboratory tests\nPREVENTION\n Strict biosecurity: pen pigs; no free-range scavenging; fence off warthogs and bushpigs\n Never feed swill, kitchen waste or pork scraps unless boiled for 30 minutes\n Limit visitors; footbath and clean clothes; buy pigs only from known healthy sources and quarantine for 3 weeks\n Disinfect vehicles, crates and pens; control soft ticks in pens and rodents\nTREATMENT\nAND CONTROL\n There is no treatment or widely approved vaccine - report immediately to the veterinary authorities\n Stamping out: authorities cull infected herds, burn or deep-bury carcasses, disinfect, and enforce movement control and\na rest period before restocking\n Do not sell, slaughter, butcher or move sick pigs or pork; never dump carcasses in water or bush\n2. Classical Swine Fever (Hog Cholera)\nViral - NOTIFIABLE\nCAUSE AND\nSPREAD\nPestivirus spread by contact, contaminated feed and equipment, and carrier pigs; looks similar to ASF.\nSIGNS AND\nSYMPTOMS\n High fever, huddling, loss of appetite\n Red, inflamed eyes with sticky discharge; constipation then yellow diarrhoea\n Purple blotches on skin; staggering gait; tremors in piglets\n Abortions, stillbirths; chronic wasting\nPREVENTION\n Vaccinate with a licensed live vaccine where permitted; biosecurity as for ASF\n Quarantine new pigs; no swill feeding\nTREATMENT\nAND CONTROL\n No treatment - notify the veterinary authorities; cull and dispose of infected pigs\n3. Foot-and-Mouth Disease in Pigs\nViral - NOTIFIABLE\nCAUSE AND\nSPREAD",
+      "source_filename": "African_Livestock_and_Crop_Health_Guide.pdf",
+      "updated_at": "2026-10-27T10:45:51.625992+00:00"
+    },
+    {
+      "id": "20f88893-0a82-47ce-9e15-70056cefc847",
+      "condition_id": null,
+      "host_key": "cattle",
+      "status": "draft",
+      "title": {
+        "en": "Armyworm (cattle)"
+      },
+      "steps": {
+        "en": [
+          "Some diseases in this guide can infect people: anthrax, brucellosis, Rift Valley fever, avian influenza, orf, bovine",
+          "tuberculosis, swine erysipelas, pork tapeworm (cysticercosis) and others. Never eat or sell meat or milk from sick animals or",
+          "Normal vital signs of healthy adult animals",
+          "Animal",
+          "Temperature",
+          "Heart rate / min",
+          "Breaths / min",
+          "Notes",
+          "Cattle",
+          "Chewing the cud most of the day",
+          "Figures are approximate adult values and change with age, season, pregnancy and stress. A temperature 1 °C or more above normal usually",
+          "indicates infection. Use a rectal thermometer for mammals.",
+          "African Livestock and Crop Health Guide",
+          "How to Use This Guide",
+          "Educational guide - consult a vet or extension officer before treating. Follow product labels.",
+          "Page 4",
+          "Biosecurity and general health management",
+          "Biosecurity checklist for any livestock farm",
+          " Fence or house animals; control visitors, vehicles, dogs, wildlife and rodents. Provide a footbath and handwashing point at the",
+          "entrance.",
+          " Quarantine new animals for at least 2-3 weeks and examine them before they join the herd or flock.",
+          " Buy animals from known healthy sources, not from the nearest market where possible; avoid sharing bulls, boars, bucks or",
+          "equipment.",
+          " Do not feed swill, kitchen waste or raw meat scraps to pigs; do not allow free-range pigs to scavenge near latrines.",
+          " Clean and disinfect pens, houses, drinkers and feeders regularly; remove manure; keep litter and floors dry.",
+          " Dispose of dead animals promptly by deep burial with lime or burning; do not dump carcasses in water or bush; do not skin or eat",
+          " Keep records: vaccinations, treatments, births, deaths and movements - these are useful for vets and for disease control.",
+          " Vaccinate on schedule against the diseases present in your area, and keep vaccines cold (2-8 °C) in a cool box or refrigerator.",
+          "Responsible use of veterinary drugs and acaricides",
+          " Use the correct dose for the animal's bodyweight and species; under-dosing builds resistance in worms, ticks and bacteria."
+        ]
+      },
+      "prevention_steps": {
+        "en": [
+          " Vaccinate with a vaccine matching local serotypes; restrict movement and visitors",
+          " Do not feed untreated waste from infected areas",
+          " Vaccinate breeding stock and growers as per vet schedule",
+          " Keep pens clean; control rodents; reduce stress",
+          " Wash sows before farrowing; clean and dry pens; do not overstock",
+          " Deworm sows 1-2 weeks before farrowing, piglets at weaning, and growers every 2-3 months",
+          " Rotate pastures for outdoor pigs",
+          " Treat sows before farrowing; treat new pigs on arrival",
+          " Clean and disinfect pens; avoid overcrowding",
+          " Build and use latrines; keep pigs penned, not free-roaming",
+          " Cook pork thoroughly; condemn infected carcasses at meat inspection",
+          " Treat people with tapeworms; community health education",
+          " Clean and disinfect farrowing pens; wash sows before farrowing",
+          " Ensure piglets suckle colostrum within hours of birth",
+          " Keep the piglet nest warm (about 30-35 °C), dry and draught-free",
+          " Vaccinate sows where available; avoid sudden weaning feed changes",
+          " Inject iron dextran as per label within the first 3 days of birth; repeat if advised",
+          " Provide clean iron-rich supplements or a sod of clean soil in concrete pens",
+          " Good ventilation, avoid draughts and overcrowding; all-in, all-out",
+          " Vaccinate against Mycoplasma and bacteria where advised; quarantine new pigs",
+          "Sign: AND",
+          "Sign:  Fever; blisters on the snout, tongue, lips, coronary band and between the toes, and on the teats",
+          "Sign:  Severe lameness; pigs refuse to stand; hooves may be lost",
+          "Sign:  Piglets can die suddenly",
+          "Sign: AND",
+          "Sign:  Sudden fever (41 °C), stiffness, reluctance to move",
+          "Sign:  Raised, red or purple diamond-shaped skin patches on the back, sides and neck",
+          "Sign:  Swollen painful joints (chronic arthritis); abortion; sudden death",
+          "Sign: AND",
+          "Sign:  Poor growth and feed efficiency, pot belly, rough coat",
+          "Sign:  Coughing ('thumps') when larvae migrate through the lungs",
+          "Sign:  Diarrhoea; worms visible in dung; 'milk spot' liver damage at slaughter",
+          "Sign: AND",
+          "Sign:  Intense itching; rubbing on walls and posts",
+          "Sign:  Scabs and thickened, crusty skin on ears, flanks, legs and belly; hair loss"
+        ]
+      },
+      "products": [
+        {
+          "name": "s",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Tomato Leafminer (Tuta absoluta)",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Insect pest - caterpillars",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "CAUSE AND",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "SPREAD",
+          "note": "From source file (expert must verify before Publish)"
+        },
+        {
+          "name": "Tiny moths lay eggs on leaves; larvae tunnel inside leaves, stems and fruit. Multiple generations a year; very destructi",
+          "note": "From source file (expert must verify before Publish)"
+        }
+      ],
+      "full_text": "Some diseases in this guide can infect people: anthrax, brucellosis, Rift Valley fever, avian influenza, orf, bovine\ntuberculosis, swine erysipelas, pork tapeworm (cysticercosis) and others. Never eat or sell meat or milk from sick animals or\nanimals found dead; boil or pasteurise milk; cook meat thoroughly; and never open a carcass suspected of anthrax.\nNormal vital signs of healthy adult animals\n Animal\nTemperature\nHeart rate / min\nBreaths / min\nNotes\nCattle\n38.0-39.5 °C\n48-84\n10-30\nChewing the cud most of the day\nFigures are approximate adult values and change with age, season, pregnancy and stress. A temperature 1 °C or more above normal usually\nindicates infection. Use a rectal thermometer for mammals.\n\nAfrican Livestock and Crop Health Guide\n1. How to Use This Guide\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 4\nBiosecurity and general health management\n Biosecurity checklist for any livestock farm\n Fence or house animals; control visitors, vehicles, dogs, wildlife and rodents. Provide a footbath and handwashing point at the\nentrance.\n Quarantine new animals for at least 2-3 weeks and examine them before they join the herd or flock.\n Buy animals from known healthy sources, not from the nearest market where possible; avoid sharing bulls, boars, bucks or\nequipment.\n Do not feed swill, kitchen waste or raw meat scraps to pigs; do not allow free-range pigs to scavenge near latrines.\n Clean and disinfect pens, houses, drinkers and feeders regularly; remove manure; keep litter and floors dry.\n Dispose of dead animals promptly by deep burial with lime or burning; do not dump carcasses in water or bush; do not skin or eat\nanimals found dead.\n Keep records: vaccinations, treatments, births, deaths and movements - these are useful for vets and for disease control.\n Vaccinate on schedule against the diseases present in your area, and keep vaccines cold (2-8 °C) in a cool box or refrigerator.\nResponsible use of veterinary drugs and acaricides\n Use the correct dose for the animal's bodyweight and species; under-dosing builds resistance in worms, ticks and bacteria.\n Complete the course; do not share or reuse needles; observe the withdrawal period before selling milk, eggs or meat.\n Rotate classes of dewormers and acaricides; buy drugs only from registered veterinary outlets; check expiry dates and keep out\nof reach of children.\n Antibiotics do not work on viral diseases (e.g. ND, PPR, ASF, FMD, LSD); they only treat secondary bacterial infection.\nSafe use of pesticides and fungicides on crops\n Identify the problem first; use only products registered in your country for that crop and pest, in the label dose.\n Wear gloves, long clothing, boots, mask and eye protection; never mix or spray near water sources, food or children.\n Observe the pre-harvest interval and re-entry period; store chemicals locked away in original containers; triple-rinse and puncture\nempty containers.\n Use integrated pest management (IPM): resistant varieties, crop rotation, clean seed, field hygiene, traps, natural enemies and\nbotanicals such as neem, with chemicals only when needed.\n\nAfrican Livestock and Crop Health Guide\n1. How to Use This Guide\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 5\nQuick reference: notifiable and zoonotic diseases\n Disease\nSpecies\nWhy it matters\nAfrican swine fever\nPigs\nNo vaccine or treatment; kills up to 100 percent; report and cull\nFoot-and-mouth disease\nCattle, goats, pigs\nExtremely contagious; stops trade; vaccinate with matching\nserotypes\nPeste des petits ruminants\nGoats, sheep\nHigh deaths; one-dose vaccine gives long protection\nNewcastle disease / avian influenza\nCattle\nNotifiable; vaccinate and control movement\nBrucellosis, bovine TB\nCattle, goats\nSpread to people through raw milk; test and cull\nTaenia solium (pork measles)\nPigs, people\nCauses epilepsy in people; use latrines and cook pork well\nWhat to do in a suspected disease outbreak (livestock)\n 1. Isolate sick animals at once and stop all movement of animals, products and people in and out of the farm.\n 2. Call your vet or District Veterinary Officer; give number sick and dead, species, age, signs and recent movements.\n 3. Do not slaughter, sell or eat sick animals or animals that die suddenly; do not move carcasses.\n 4. Wear gloves and boots; wash and disinfect hands, boots, equipment and vehicles after contact.\n 5. Dispose of carcasses by deep burial with lime or burning, as directed by officials.\n 6. Follow official orders on quarantine, vaccination and compensation; restock only after cleaning and the recommended rest\nperiod.\nWhat to do in a suspected crop disease or pest outbreak\n 1. Walk the field in a zig-zag and record how many plants are affected and which parts (leaf, stem, root, fruit, grain).\n 2. Take a sample (whole plant with roots, wrapped in damp paper) to the extension officer or plant clinic; photograph symptoms.\n 3. Remove and destroy badly infected plants; do not compost diseased material.\n 4. Choose control according to the cause: fungicide for fungi, bactericide or hygiene for bacteria, vector control for viruses,\ninsecticide or biocontrol for insects.\n 5. Clean tools, boots and wheelbarrows between fields; plan crop rotation and resistant varieties for the next season.\n\nAfrican Livestock and Crop Health Guide\nPART A - LIVESTOCK DISEASES, PESTS AND PARASITES\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 6\nPART A - LIVESTOCK DISEASES, PESTS AND\nPARASITES\nChickens, goats, pigs and cattle\nLivestock health in Africa is shaped by heat, rain, tick and tsetse pressure, free-range management, shared grazing and markets.\nThe sections below follow the same order: a labelled diagram, then each disease or parasite. Start with the diagram to decide\nwhere the problem is, then read the entries.\n\nAfrican Livestock and Crop Health Guide\nA1. Chickens (Poultry)\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 7\nA1. Chickens (Poultry)\nMost village flocks are free-range and unvaccinated. Newcastle disease, parasites and predators are the leading causes of\nloss.\nHighly contagious; pigs spread huge amounts of virus. See also the cattle section.\nSIGNS AND\nSYMPTOMS\n Fever; blisters on the snout, tongue, lips, coronary band and between the toes, and on the teats\n Severe lameness; pigs refuse to stand; hooves may be lost\n Piglets can die suddenly\nPREVENTION\n Vaccinate with a vaccine matching local serotypes; restrict movement and visitors\n Do not feed untreated waste from infected areas\nTREATMENT\nAND CONTROL\n No specific treatment; supportive care and soft bedding\n Report to authorities; isolate and follow official control instructions\n\nAfrican Livestock and Crop Health Guide\nA3. Pigs\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 19\n4. Swine Erysipelas\nBacterial (Erysipelothrix rhusiopathiae) - ZOONOTIC\nCAUSE AND\nSPREAD\nBacteria live in soil and on tonsils of healthy pigs; outbreaks follow stress, weather changes or poor hygiene.\nSIGNS AND\nSYMPTOMS\n Sudden fever (41 °C), stiffness, reluctance to move\n Raised, red or purple diamond-shaped skin patches on the back, sides and neck\n Swollen painful joints (chronic arthritis); abortion; sudden death\nPREVENTION\n Vaccinate breeding stock and growers as per vet schedule\n Keep pens clean; control rodents; reduce stress\nTREATMENT\nAND CONTROL\n Penicillin early, as prescribed by the vet; anti-inflammatory for fever\n People: wear gloves; the infection can cause skin lesions (erysipeloid) in humans\n5. Internal Parasites: Ascaris, Nodular Worm and Others\nParasitic\nCAUSE AND\nSPREAD\nEggs passed in dung survive for months in pens and soil; pigs swallow them from contaminated floors, feed and water.\nFree-range and wet pens have the highest worm burden.\nSIGNS AND\nSYMPTOMS\n Poor growth and feed efficiency, pot belly, rough coat\n Coughing ('thumps') when larvae migrate through the lungs\n Diarrhoea; worms visible in dung; 'milk spot' liver damage at slaughter\nPREVENTION\n Wash sows before farrowing; clean and dry pens; do not overstock\n Deworm sows 1-2 weeks before farrowing, piglets at weaning, and growers every 2-3 months\n Rotate pastures for outdoor pigs\nTREATMENT\nAND CONTROL\n Ivermectin, fenbendazole, albendazole or levamisole as per label; repeat as directed\n Observe withdrawal period before slaughter\n6. Mange and Lice\nParasitic - skin\nCAUSE AND\nSPREAD\nSarcoptes scabiei mites burrow in skin; spread from sow to piglets and between pigs in contact; lice live on skin folds.\nSIGNS AND\nSYMPTOMS\n Intense itching; rubbing on walls and posts\n Scabs and thickened, crusty skin on ears, flanks, legs and belly; hair loss\n Reduced growth and appetite; sows scratching\nPREVENTION\n Treat sows before farrowing; treat new pigs on arrival\n Clean and disinfect pens; avoid overcrowding\nTREATMENT\nAND CONTROL\n Ivermectin injection (repeat in 10-14 days) or amitraz wash/spray per label\n Treat the whole herd and the pens\n Observe withdrawal periods\n7. Porcine Cysticercosis (Pork Measles)\nParasitic (Taenia solium) - ZOONOTIC - public health danger\nCAUSE AND\nSPREAD\nPigs eat human faeces containing tapeworm eggs when free-ranging near homes. Cysts develop in pig muscle and\ntongue. People eating undercooked infected pork get tapeworms; eggs shed by carriers can cause neurocysticercosis\n(epilepsy) in humans.\nSIGNS AND\nSYMPTOMS\n Pigs usually look healthy\n Small white cysts (measles) in the tongue, meat and heart; cysts may be felt under the tongue\n Discovered at slaughter or meat inspection\nPREVENTION\n Build and use latrines; keep pigs penned, not free-roaming\n Cook pork thoroughly; condemn infected carcasses at meat inspection\n Treat people with tapeworms; community health education\nTREATMENT\nAND CONTROL\n Oxfendazole may be used in pigs under vet advice, but carcasses of infected pigs must not be eaten\n Human carriers are treated by health workers (e.g. niclosamide or praziquantel)\n\nAfrican Livestock and Crop Health Guide\nA3. Pigs\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 20\n8. Neonatal and Post-weaning Diarrhoea (E. coli Scours)\nBacterial\nCAUSE AND\nSPREAD\nPiglets pick up E. coli from dirty farrowing pens, udders and floors; cold, damp pens and poor colostrum intake increase\nrisk.\nSIGNS AND\nSYMPTOMS\n Watery yellow, white or grey diarrhoea; wet, dirty rear end; strong odour\n Dehydration, sunken eyes, shivering; piglets lose weight and die\n Post-weaning: scours, poor growth, swollen eyelids (oedema disease)\nPREVENTION\n Clean and disinfect farrowing pens; wash sows before farrowing\n Ensure piglets suckle colostrum within hours of birth\n Keep the piglet nest warm (about 30-35 °C), dry and draught-free\n Vaccinate sows where available; avoid sudden weaning feed changes\nTREATMENT\nAND CONTROL\n Oral rehydration solution and warmth\n Antibiotics chosen by the vet (preferably after sensitivity testing)\n Keep sick piglets separate and pens clean\n9. Piglet Anaemia (Iron Deficiency)\nNutritional\nCAUSE AND\nSPREAD\nSow milk is low in iron; piglets on concrete floors cannot get iron from soil.\nSIGNS AND\nSYMPTOMS\n Pale skin, wrinkled hairless skin; poor growth at 1-3 weeks\n Rapid, laboured breathing ('thumping'); weak piglets; sudden death\nPREVENTION\n Inject iron dextran as per label within the first 3 days of birth; repeat if advised\n Provide clean iron-rich supplements or a sod of clean soil in concrete pens\nTREATMENT\nAND CONTROL\n Iron injection and good nutrition; treat the sow and piglets as per vet advice\n10. Swine Pneumonia (Mycoplasma and Bacterial)\nBacterial\nCAUSE AND\nSPREAD\nSpread by coughing and nose-to-nose contact; worsened by cold, damp, poor ventilation, overcrowding and dust.\nSIGNS AND\nSYMPTOMS\n Dry or moist cough; fever; laboured, abdominal breathing\n Poor growth, dullness, reduced appetite; sometimes sudden deaths\nPREVENTION\n Good ventilation, avoid draughts and overcrowding; all-in, all-out\n Vaccinate against Mycoplasma and bacteria where advised; quarantine new pigs\nTREATMENT\nAND CONTROL\n Antibiotics prescribed by a vet (e.g. tylosin, tetracyclines, florfenicol)\n Isolate sick pigs; give warmth and fresh air\n\nAfrican Livestock and Crop Health Guide\nA4. Cattle\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 21\nA4. Cattle\nTick-borne diseases, trypanosomiasis, FMD, LSD and worms cause the largest cattle losses in Africa.\nFigure 4. Cattle - where to look for disease\n1. Ears\n2. Eyes and eyelids\n3. Lymph nodes\n4. Muzzle, nose, mouth\n5. Dewlap and brisket\n6. Front hooves and feet\n7. Hump and back\n8. Ribs, chest and lungs\n9. Flank and belly\n10. Udder and teats\n11. Tail and perineum\n12. Hind hooves and legs\nRegular inspection of ears, lymph nodes, eyes, skin, udder and feet allows early detection and treatment.\nNo.\nBody part / plant part\nWhat to look for (and likely causes)\n1\nEars\nBrown ear ticks clustered inside the ear (ECF risk); wounds and ear-tag injury\n2\nEyes and eyelids\nWatery or pale eyes (ECF, anaemia); pale or yellow lining (redwater, anaplasmosis)\n3\nLymph nodes\nHard swollen lymph nodes in front of the shoulder and below the ear (ECF, TB, LSD)\n4\nMuzzle, nose, mouth\nDrooling, blisters and erosions on gums, tongue and lips (FMD); nasal discharge\n5\nDewlap and brisket\nSwelling (bottle jaw, trypanosomiasis, heart disease); ticks\n6\nFront hooves and feet\nBlisters, foul smell, lameness (FMD, foot rot, interdigital dermatitis)\n7\nHump and back\nFirm skin nodules (LSD); ticks, wounds, mange; blackleg swelling at shoulder\n8\nRibs, chest and lungs\nCough, laboured breathing, elbows turned out (CBPP, pneumonia, TB)\n9\nFlank and belly\nSwollen left flank (bloat); sunken flank (not eating); pot belly (worms)\n10\nUdder and teats\nHot hard quarter, clots in milk (mastitis); blisters (FMD); ticks on udder\n11\nTail and perineum\nSoiled with diarrhoea or blood; ticks under the tail; aborted foetus discharge\n12\nHind hooves and legs\nLameness, swollen joints, foot lesions; blackleg swelling in thigh\n\nAfrican Livestock and Crop Health Guide\nA4. Cattle\nEducational guide - consult a vet or extension officer before treating. Follow product labels.\nPage 22\n1. Foot-and-Mouth Disease (FMD)\nViral - NOTIFIABLE - also affects goats,",
+      "source_filename": "African_Livestock_and_Crop_Health_Guide.pdf",
+      "updated_at": "2026-10-27T10:45:51.636131+00:00"
+    }
+  ]
+}

@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MasoMlimi Expert Portal</title>
+<style>
+:root{--green:#1B8F4A;--greenDark:#0F6B36;--lime:#b8e986;--sidebar:#1a1f1c;--bg:#eef6ee;--card:#fff;--muted:#6b7280;--text:#111827}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
+.sidebar{width:220px;background:var(--sidebar);color:#e5e7eb;padding:20px 14px;flex-shrink:0;min-height:100vh}
+.brand{font-weight:800;font-size:1.05rem;color:#fff;margin:0 8px 28px}.brand span{color:var(--lime)}
+.nav-btn{display:block;width:100%;text-align:left;background:transparent;border:0;color:#d1d5db;padding:12px 14px;border-radius:12px;font-weight:600;font-size:14px;cursor:pointer;margin-bottom:4px}
+.nav-btn:hover{background:rgba(255,255,255,.08);color:#fff}.nav-btn.active{background:var(--lime);color:#14532d}
+.main{flex:1;padding:20px 24px 40px;overflow-x:auto}
+h1{margin:0 0 4px;font-size:1.35rem;color:var(--greenDark)}h3{margin:0 0 12px;color:var(--greenDark);font-size:1.05rem}
+.hint{color:var(--muted);font-size:13px;margin:8px 0}.ok{color:#0F6B36;font-weight:700}.err{color:#b71c1c;font-weight:700}
+.card{background:var(--card);border-radius:18px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.04);margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.mini{background:#f9fafb;border-radius:14px;padding:14px;text-align:center}
+.mini .v{font-size:1.4rem;font-weight:800}.mini .l{font-size:12px;color:var(--muted)}
+label{display:block;font-weight:600;font-size:13px;margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #d1d5db;font-size:14px;font-family:inherit}
+textarea{min-height:60px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button.a{background:var(--green);color:#fff;border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;margin:8px 8px 0 0}
+button.a:hover{background:var(--greenDark)}
+button.s{background:#fff;color:var(--greenDark);border:1px solid var(--green);border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;margin:8px 8px 0 0}
+button.d{background:#fff;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;margin-left:8px}
+.tab{display:none}.tab.active{display:block}
+.badge{padding:2px 8px;border-radius:6px;font-size:12px;color:#fff}.badge.draft{background:#a16207}.badge.published{background:#166534}
+ul.l{list-style:none;padding:0;margin:0}ul.l li{padding:12px 0;border-bottom:1px solid #f0f0f0;line-height:1.4}
+#chatBox{max-height:340px;overflow-y:auto;border:1px solid #eee;border-radius:12px;padding:10px;background:#fafafa;display:flex;flex-direction:column;gap:6px}
+.msg{padding:8px 10px;border-radius:10px;background:#f3f4f6;max-width:90%}.msg.expert{background:#dcfce7;margin-left:auto}.msg.farmer{background:#fff;border:1px solid #e5e7eb}
+.quote{border-left:3px solid #0F6B36;background:rgba(0,0,0,.05);border-radius:6px;padding:4px 8px;margin-bottom:4px;font-size:12px}
+.rbtn{background:none;border:0;color:#0F6B36;font-weight:700;cursor:pointer;font-size:12px;padding:0;margin-left:8px}
+#replyBar{display:none;background:#f3f4f6;border-left:3px solid #0F6B36;border-radius:8px;padding:6px 10px;margin-top:8px;font-size:13px}
+#threadList li{padding:10px;margin:4px 0;border-radius:10px;background:#f3f4f6;cursor:pointer}
+.editor{background:#f9fafb;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-top:10px}
+.warn{background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:8px 10px;font-size:13px;margin:8px 0}
+@media(max-width:900px){body{flex-direction:column}.sidebar{width:100%;min-height:auto}.grid{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand">Maso<span>Mlimi</span></div>
+  <button class="nav-btn active" data-tab="dash">Dashboard</button>
+  <button class="nav-btn" data-tab="proc">Procedures</button>
+  <button class="nav-btn" data-tab="lib">Library</button>
+  <button class="nav-btn" data-tab="names">Local names &amp; watch</button>
+  <button class="nav-btn" data-tab="experts">Officers</button>
+  <button class="nav-btn" data-tab="chat">Farmer chat</button>
+  <button class="nav-btn" id="btnKey" style="margin-top:20px;font-size:12px">Change API key</button>
+</aside>
+<div class="main">
+  <h1 id="pageTitle">Dashboard</h1>
+  <p class="hint">Farmers see only <b>published</b> content. Doses appear only when the publishing vet verifies them with an official source.</p>
+
+  <div id="tab-dash" class="tab active">
+    <div class="card"><h3>Field activity</h3>
+      <div class="grid">
+        <div class="mini"><div class="v" id="sGuides">-</div><div class="l">Published guides</div></div>
+        <div class="mini"><div class="v" id="sDrafts">-</div><div class="l">Drafts to review</div></div>
+        <div class="mini"><div class="v" id="sScans">-</div><div class="l">Farmer questions (14d)</div></div>
+        <div class="mini"><div class="v" id="sExperts">-</div><div class="l">Officers</div></div>
+      </div>
+      <p id="dashMsg" class="hint"></p>
+      <button class="s" id="btnDash">Refresh</button>
+    </div>
+    <div class="card"><h3>Published guidance by crop / animal</h3><p class="hint">A farmer asking about a crop or animal that is not listed here gets "No approved guidance yet".</p><ul class="l" id="pubByHost"></ul></div>
+    <div class="card"><h3>Most asked about</h3><ul class="l" id="topHosts"></ul></div>
+    <div class="card"><h3>Recent questions (anonymous)</h3><ul class="l" id="recent"></ul></div>
+  </div>
+
+  <div id="tab-proc" class="tab">
+    <div class="card"><h3>Procedures</h3>
+      <p class="hint">Upload files in Library: each condition becomes a draft here. Review every section, then publish.</p>
+      <button class="a" id="btnNewProc">New procedure</button><button class="s" id="btnProcRefresh">Refresh</button>
+      <p id="procMsg" class="hint"></p><ul class="l" id="procs"></ul>
+    </div>
+  </div>
+
+  <div id="tab-lib" class="tab">
+    <div class="card"><h3>Upload expert files</h3>
+      <p class="hint">PDF, DOCX or TXT with one block per condition (a heading, then Type / Signs / Symptoms / Treatment / Medication / Dose / Prevention / When to refer). Photos: JPG, PNG, WebP. Creates DRAFTS only.</p>
+      <div class="row"><div><label>Host key</label><input id="lib_host" value="maize" maxlength="40"></div>
+      <div><label>Organism</label><select id="lib_org"><option>crop</option><option>livestock</option></select></div></div>
+      <div class="row"><div><label>Language of the file</label><select id="lib_lang"><option value="en">English</option><option value="ny">Chichewa</option><option value="sw">Swahili</option><option value="fr">French</option><option value="pt">Portuguese</option></select></div>
+      <div><label>Condition label (for photos / single-condition files)</label><input id="lib_condition" maxlength="200"></div></div>
+      <label>Files</label><input type="file" id="lib_files" multiple>
+      <button class="a" id="btnLibUpload">Upload</button><p id="libMsg" class="hint"></p>
+    </div>
+    <div class="card"><h3>Library items</h3><button class="s" id="btnLibRefresh">Refresh</button><ul class="l" id="libList"></ul></div>
+  </div>
+
+  <div id="tab-names" class="tab">
+    <div class="card"><h3>Words farmers use (waiting for approval)</h3>
+      <p class="hint">Suggested only after at least 3 farmers said the advice helped. Approve a word to let it match this condition.</p>
+      <button class="s" id="btnSugg">Refresh</button><ul class="l" id="suggList"></ul>
+    </div>
+    <div class="card"><h3>Add a local name</h3>
+      <label>Condition</label><select id="alias_pid"></select>
+      <label>Local name / phrase</label><input id="alias_phrase" maxlength="80">
+      <button class="a" id="btnAliasAdd">Add</button><p id="aliasMsg" class="hint"></p>
+    </div>
+    <div class="card"><h3>Watch candidates (same problem reported by 3+ farmers)</h3>
+      <p class="hint">Publishing an alert is your decision. Nothing is published automatically.</p>
+      <button class="s" id="btnTrends">Refresh</button><ul class="l" id="trendList"></ul>
+    </div>
+  </div>
+
+  <div id="tab-experts" class="tab">
+    <div class="card"><h3>Register officer</h3>
+      <label>Full name *</label><input id="ex_name" maxlength="80">
+      <div class="row"><div><label>Role</label><select id="ex_role"><option>Extension officer</option><option>Agronomist</option><option>Veterinary officer</option><option>District office</option></select></div>
+      <div><label>District</label><input id="ex_district" value="Lilongwe" maxlength="60"></div></div>
+      <label>Phone (+265...)</label><input id="ex_phone" maxlength="16">
+      <button class="a" id="btnExSave">Save officer</button><p id="exMsg" class="hint"></p>
+    </div>
+    <div class="card"><h3>Registered officers</h3><ul class="l" id="exList"></ul></div>
+  </div>
+
+  <div id="tab-chat" class="tab">
+    <div class="card" style="display:grid;grid-template-columns:240px 1fr;gap:14px;min-height:420px">
+      <div><h3>Conversations</h3><button class="s" id="btnThreads">Refresh</button><ul class="l" id="threadList"></ul></div>
+      <div><h3 id="threadMeta">Select a conversation</h3><div id="chatBox"></div><div id="replyBar"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <input id="replyText" placeholder="Reply..." maxlength="2000" style="flex:1;min-width:140px">
+          <button class="a" id="btnReply">Send</button><button class="s" id="btnRec">Hold to record</button>
+        </div><p id="chatMsg" class="hint"></p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var titles = {dash:'Dashboard',proc:'Procedures',lib:'Library',names:'Local names & watch',experts:'Officers',chat:'Farmer chat'};
+  var SEC = ['signs','symptoms','treatment','medication','dose','prevention','refer'];
+  var SECLBL = {signs:'Signs',symptoms:'Symptoms',treatment:'Treatment / what to do',medication:'Medicines / products',dose:'Dose and withdrawal (vet only)',prevention:'Prevention',refer:'When to refer'};
+  var $ = function (id) { return document.getElementById(id); };
+
+  function el(tag, props, kids) {
+    var n = document.createElement(tag);
+    Object.keys(props || {}).forEach(function (k) { if (k === 'text') n.textContent = props[k]; else if (k === 'cls') n.className = props[k]; else n[k] = props[k]; });
+    (kids || []).forEach(function (c) { n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function note(id, text, ok) { var n = $(id); if (n) { n.textContent = text; n.className = 'hint ' + (ok === true ? 'ok' : ok === false ? 'err' : ''); } }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  function base() { return location.origin; }
+
+  function getKey() { var k = sessionStorage.getItem('mm_key'); if (!k) { k = prompt('Enter the portal API key'); if (k) sessionStorage.setItem('mm_key', k.trim()); } return k || ''; }
+  $('btnKey').onclick = function () { sessionStorage.removeItem('mm_key'); getKey(); };
+
+  async function api(path, opt) {
+    opt = opt || {}; opt.headers = Object.assign({'X-API-Key': getKey()}, opt.headers || {});
+    var c = new AbortController(), t = setTimeout(function () { c.abort(); }, 30000); opt.signal = c.signal;
+    try {
+      var r = await fetch(base() + path, opt), data = null, txt = await r.text();
+      try { data = JSON.parse(txt); } catch (e) { data = {detail: txt.slice(0, 200)}; }
+      if (r.status === 401) { sessionStorage.removeItem('mm_key'); throw new Error('API key rejected. Reload and enter the correct key.'); }
+      if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail || data));
+      return data;
+    } finally { clearTimeout(t); }
+  }
+  function post(path, body) { return api(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {})}); }
+  function put(path, body) { return api(path, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {})}); }
+  function lines(v) { return v.split(/\n/).map(function (s) { return s.trim(); }).filter(Boolean); }
+
+  function showTab(tab) {
+    document.querySelectorAll('.nav-btn[data-tab]').forEach(function (x) { x.classList.toggle('active', x.dataset.tab === tab); });
+    document.querySelectorAll('.tab').forEach(function (p) { p.classList.toggle('active', p.id === 'tab-' + tab); });
+    $('pageTitle').textContent = titles[tab] || tab;
+    ({dash:loadDash, proc:loadProcs, lib:loadLib, names:loadNames, experts:loadExperts, chat:loadThreads}[tab] || function () {})();
+  }
+  document.querySelectorAll('.nav-btn[data-tab]').forEach(function (b) { b.onclick = function () { showTab(b.dataset.tab); }; });
+
+  // ---------------- dashboard
+  async function loadDash() {
+    try {
+      var d = await api('/v1/dashboard/stats?district=all&hours=336'), st = d.stats || {};
+      $('sScans').textContent = st.total_scans || 0;
+      var ps = await api('/v1/pilot/status');
+      $('sGuides').textContent = ps.published_procedures; $('sDrafts').textContent = ps.drafts_hidden_from_farmers; $('sExperts').textContent = ps.active_experts;
+      var byHost = $('pubByHost'); clear(byHost);
+      Object.keys(ps.published_by_host || {}).forEach(function (h) { byHost.appendChild(el('li', {}, [el('b', {text: h}), ' - ' + ps.published_by_host[h] + ' published'])); });
+      if (!byHost.children.length) byHost.appendChild(el('li', {cls:'hint', text:'Nothing published yet. Farmers will get "no approved guidance".'}));
+      var ul = $('topHosts'); clear(ul);
+      (st.top_hosts || []).forEach(function (h) {
+        var conds = Object.keys(h.conditions || {}).map(function (k) { return k + ': ' + h.conditions[k]; }).join(', ');
+        ul.appendChild(el('li', {}, [el('b', {text: h.host_key}), ' - ' + h.count + ' questions', conds ? el('div', {cls:'hint', text: conds}) : '']));
+      });
+      if (!ul.children.length) ul.appendChild(el('li', {cls:'hint', text:'No questions yet'}));
+      var rs = $('recent'); clear(rs);
+      (st.recent_scans || []).forEach(function (r) {
+        rs.appendChild(el('li', {text: (r.at || '').replace('T',' ').slice(0,16) + ' - ' + r.host_key + ' - ' + r.outcome + (r.condition_label ? ' - ' + r.condition_label : '') + ' (' + r.source + ')'}));
+      });
+      note('dashMsg', '');
+    } catch (e) { note('dashMsg', e.message, false); }
+  }
+  $('btnDash').onclick = loadDash;
+
+  // ---------------- procedures
+  var openEditor = null;
+  async function loadProcs() {
+    try {
+      var p = await api('/v1/procedures?drafts=true'), ul = $('procs'); clear(ul);
+      (p.items || []).forEach(function (it) { ul.appendChild(procRow(it)); });
+      if (!ul.children.length) ul.appendChild(el('li', {cls:'hint', text:'No procedures yet.'}));
+    } catch (e) { note('procMsg', e.message, false); }
+  }
+  function procTitle(it) { var t = it.title || {}; return t[it.source_lang] || t.en || Object.values(t)[0] || it.id; }
+  function procRow(it) {
+    var li = el('li', {}), st = it.status || 'draft';
+    li.appendChild(el('span', {cls:'badge ' + st, text: st}));
+    li.appendChild(el('b', {text: ' ' + procTitle(it) + ' '}));
+    li.appendChild(el('code', {text: it.host_key}));
+    if (it.needs_host_review) li.appendChild(el('span', {cls:'err', text:'  CHECK crop/animal before publishing'}));
+    if (it.status === 'published') li.appendChild(el('span', {cls:'hint', text: '  approved by ' + (it.approved_by || '?') + (it.dose_verified ? ' - dose verified' : ' - no dose shown')}));
+    var holder = el('div');
+    var eb = el('button', {cls:'s', text:'Review / edit'}); eb.onclick = function () { clear(holder); holder.appendChild(editor(it)); };
+    li.appendChild(eb);
+    var db = el('button', {cls:'d', text:'Delete'});
+    db.onclick = async function () { if (!confirm('Delete "' + procTitle(it) + '"?')) return; try { await api('/v1/procedures/' + it.id, {method:'DELETE'}); loadProcs(); } catch (e) { note('procMsg', e.message, false); } };
+    li.appendChild(db); li.appendChild(holder);
+    return li;
+  }
+  function editor(it) {
+    var lang = it.source_lang || 'en', sec = ((it.sections || {})[lang]) || {};
+    if (!sec.treatment && !sec.signs && !sec.prevention) { // old flat drafts
+      var prev = (it.prevention_steps || {})[lang] || [];
+      sec = {signs: prev.filter(function (x) { return /^sign/i.test(x); }).map(function (x) { return x.replace(/^sign:\s*/i,''); }),
+             treatment: (it.steps || {})[lang] || [], prevention: prev.filter(function (x) { return !/^sign/i.test(x); })};
+    }
+    var box = el('div', {cls:'editor'}), f = {};
+    box.appendChild(el('label', {text:'Name (' + lang + ')'})); f.title = el('input', {value: procTitle(it), maxLength: 200}); box.appendChild(f.title);
+    var r = el('div', {cls:'row'}); box.appendChild(r);
+    var c1 = el('div'); c1.appendChild(el('label', {text:'Crop / animal this applies to (host key, e.g. tomato, maize, goats)'})); f.host = el('input', {value: it.host_key || '', maxLength: 40}); c1.appendChild(f.host); r.appendChild(c1);
+    var c2 = el('div'); c2.appendChild(el('label', {text:'Condition type'})); f.type = el('select'); ['','disease','pest','nutrient','parasite'].forEach(function (t) { var o = el('option', {value:t, text:t || '(not stated)'}); if (t === (sec.condition_type || it.condition_type || '')) o.selected = true; f.type.appendChild(o); }); c2.appendChild(f.type); r.appendChild(c2);
+    SEC.forEach(function (k) { box.appendChild(el('label', {text: SECLBL[k] + ' (one per line)'})); f[k] = el('textarea', {value: (sec[k] || []).join('\n')}); box.appendChild(f[k]); });
+    box.appendChild(el('div', {cls:'warn', text:'Doses are shown to farmers ONLY if you tick "dose verified" below and cite the official source. Leave Dose empty if the source does not state one.'}));
+    var msg = el('p', {cls:'hint'});
+    var save = el('button', {cls:'s', text:'Save changes'});
+    save.onclick = async function () {
+      try {
+        var s = {condition_type: f.type.value}; SEC.forEach(function (k) { s[k] = lines(f[k].value); });
+        var sections = Object.assign({}, it.sections || {}); sections[lang] = s;
+        var t = Object.assign({}, it.title || {}); t[lang] = f.title.value.trim() || 'Untitled';
+        var steps = Object.assign({}, it.steps || {}); steps[lang] = s.treatment;
+        var pv = Object.assign({}, it.prevention_steps || {}); pv[lang] = s.prevention.concat(s.signs.concat(s.symptoms).map(function (x) { return 'Sign: ' + x; }));
+        var res = await put('/v1/procedures/' + it.id, {host_key: f.host.value.trim(), title: t, steps: steps, prevention_steps: pv, sections: sections, condition_type: f.type.value,
+          products: s.medication.map(function (m) { return {name: m}; })});
+        it = res; note2(msg, 'Saved as draft. Publish below.', true);
+      } catch (e) { note2(msg, e.message, false); }
+    };
+    box.appendChild(save);
+    box.appendChild(el('h3', {text:'Publish to farmers', style:'margin-top:16px'}));
+    var pr = el('div', {cls:'row'}); box.appendChild(pr);
+    var a1 = el('div'); a1.appendChild(el('label', {text:'Your name (approver) *'})); f.by = el('input', {value: localStorage.getItem('mm_by') || '', maxLength: 120}); a1.appendChild(f.by); pr.appendChild(a1);
+    var a2 = el('div'); a2.appendChild(el('label', {text:'Country'})); f.cc = el('input', {value:'MW', maxLength: 2}); a2.appendChild(f.cc); pr.appendChild(a2);
+    var chk = el('label', {}); f.dv = el('input', {type:'checkbox'}); f.dv.style.width = 'auto'; chk.appendChild(f.dv); chk.appendChild(document.createTextNode(' Dose and withdrawal period verified against an official source')); box.appendChild(chk);
+    box.appendChild(el('label', {text:'Official source (required when verified)'})); f.src = el('input', {maxLength: 300, placeholder:'e.g. Pesticide Register 2025, product label, national veterinary guideline'}); box.appendChild(f.src);
+    var pub = el('button', {cls:'a', text:'Publish'});
+    pub.onclick = async function () {
+      try {
+        if (!f.by.value.trim()) throw new Error('Approver name is required');
+        localStorage.setItem('mm_by', f.by.value.trim());
+        await post('/v1/procedures/' + it.id + '/publish', {approved_by: f.by.value.trim(), country: f.cc.value, dose_verified: f.dv.checked, dose_source: f.src.value});
+        note2(msg, 'Published. Farmers can now receive this.', true); loadProcs(); loadDash();
+      } catch (e) { note2(msg, e.message, false); }
+    };
+    box.appendChild(pub); box.appendChild(msg);
+    return box;
+  }
+  function note2(n, t, ok) { n.textContent = t; n.className = 'hint ' + (ok ? 'ok' : 'err'); }
+  $('btnProcRefresh').onclick = loadProcs;
+  $('btnNewProc').onclick = async function () {
+    try { await post('/v1/procedures', {host_key: prompt('Host key (e.g. maize, goats)', 'maize') || 'maize', title: {en: 'New condition'}, steps: {en: []}, prevention_steps: {en: []}}); loadProcs(); }
+    catch (e) { note('procMsg', e.message, false); }
+  };
+
+  // ---------------- library
+  async function loadLib() {
+    try {
+      var d = await api('/v1/library'), ul = $('libList'); clear(ul);
+      (d.items || []).forEach(function (it) { ul.appendChild(el('li', {text: (it.title || it.filename) + ' - ' + it.host_key + ' - ' + Math.round((it.size_bytes || 0) / 1024) + ' KB'})); });
+      if (!ul.children.length) ul.appendChild(el('li', {cls:'hint', text:'No files yet'}));
+    } catch (e) { clear($('libList')); $('libList').appendChild(el('li', {cls:'err', text:e.message})); }
+  }
+  $('btnLibRefresh').onclick = loadLib;
+  $('btnLibUpload').onclick = async function () {
+    var inp = $('lib_files'); if (!inp.files.length) return note('libMsg', 'Choose at least one file', false);
+    var fd = new FormData();
+    fd.append('host_key', $('lib_host').value); fd.append('organism_type', $('lib_org').value); fd.append('lang', $('lib_lang').value);
+    fd.append('condition_label', $('lib_condition').value); fd.append('auto_draft', 'true');
+    for (var i = 0; i < inp.files.length; i++) fd.append('files', inp.files[i]);
+    try {
+      note('libMsg', 'Uploading...');
+      var d = await api('/v1/library/upload', {method:'POST', body: fd});
+      var n = (d.drafts_created || []).reduce(function (a, x) { return a + x.count; }, 0);
+      note('libMsg', 'Saved ' + d.saved + ' file(s), ' + n + ' draft(s) created. Review them under Procedures.', true);
+      inp.value = ''; loadLib();
+    } catch (e) { note('libMsg', e.message, false); }
+  };
+
+  // ---------------- local names + watch
+  async function loadNames() {
+    try {
+      var s = await api('/v1/memory/suggestions'), ul = $('suggList'); clear(ul);
+      (s.items || []).forEach(function (x) {
+        var li = el('li', {}, [el('b', {text: '"' + x.token + '"'}), ' -> ' + (x.title || x.pid) + ' (' + x.farmers + ' farmers) ']);
+        var ok = el('button', {cls:'a', text:'Approve'}); ok.onclick = async function () { await post('/v1/memory/aliases/approve', {pid: x.pid, token: x.token, approved: true}); loadNames(); };
+        var no = el('button', {cls:'d', text:'Reject'}); no.onclick = async function () { await post('/v1/memory/aliases/approve', {pid: x.pid, token: x.token, approved: false}); loadNames(); };
+        li.appendChild(ok); li.appendChild(no); ul.appendChild(li);
+      });
+      if (!ul.children.length) ul.appendChild(el('li', {cls:'hint', text:'Nothing waiting'}));
+      var p = await api('/v1/procedures'), sel = $('alias_pid'); clear(sel);
+      (p.items || []).forEach(function (it) { sel.appendChild(el('option', {value: it.id, text: procTitle(it) + ' (' + it.host_key + ')'})); });
+      loadTrends();
+    } catch (e) { note('aliasMsg', e.message, false); }
+  }
+  async function loadTrends() {
+    try {
+      var t = await api('/v1/memory/trends?days=14'), ul = $('trendList'); clear(ul);
+      (t.items || []).forEach(function (x) {
+        var li = el('li', {text: (x.title || x.procedure_id) + ' - ' + x.farmers + ' farmers in ' + x.days + ' days '});
+        var b = el('button', {cls:'s', text:'Publish watch alert'});
+        b.onclick = async function () {
+          if (!confirm('Publish a WATCH alert (suspected) for "' + (x.title || '') + '"?')) return;
+          await post('/v1/alerts', {title: 'Watch: ' + (x.title || 'condition'), body: 'Several farmers nearby reported a similar problem. Check your plants or animals and follow extension advice.', district: 'all', level: 'watch', days: 7});
+          note('aliasMsg', 'Watch alert published', true);
+        };
+        li.appendChild(b); ul.appendChild(li);
+      });
+      if (!ul.children.length) ul.appendChild(el('li', {cls:'hint', text:'No signals'}));
+    } catch (e) { note('aliasMsg', e.message, false); }
+  }
+  $('btnSugg').onclick = loadNames; $('btnTrends').onclick = loadTrends;
+  $('btnAliasAdd').onclick = async function () {
+    try { await post('/v1/memory/aliases', {pid: $('alias_pid').value, phrase: $('alias_phrase').value}); note('aliasMsg', 'Added', true); $('alias_phrase').value = ''; }
+    catch (e) { note('aliasMsg', e.message, false); }
+  };
+
+  // ---------------- officers
+  async function loadExperts() {
+    try {
+      var items = await api('/v1/experts/?district=all'), ul = $('exList'); clear(ul);
+      items.forEach(function (ex) {
+        var li = el('li', {text: ex.display_name + ' - ' + ex.role_label + ' - ' + ex.district + ' '});
+        var d = el('button', {cls:'d', text:'Remove'}); d.onclick = async function () { if (confirm('Remove ' + ex.display_name + '?')) { await api('/v1/experts/' + encodeURIComponent(ex.id), {method:'DELETE'}); loadExperts(); } };
+        li.appendChild(d); ul.appendChild(li);
+      });
+      if (!items.length) ul.appendChild(el('li', {cls:'hint', text:'No officers yet'}));
+    } catch (e) { note('exMsg', e.message, false); }
+  }
+  $('btnExSave').onclick = async function () {
+    try {
+      var body = {display_name: $('ex_name').value.trim(), role_label: $('ex_role').value, district: $('ex_district').value.trim(), phone_e164: $('ex_phone').value.trim() || null};
+      if (!body.display_name) throw new Error('Name required');
+      await post('/v1/experts/', body); note('exMsg', 'Officer saved', true); $('ex_name').value = ''; loadExperts();
+    } catch (e) { note('exMsg', e.message, false); }
+  };
+
+  // ---------------- chat (reply to text and voice notes)
+  var cur = null, replyTo = null, rendered = {}, poll = null;
+  function previewText(m) { var t = m.text || ''; return (m.type === 'audio_note' || t.indexOf('[voice_note:') >= 0) ? 'Voice note' : t.slice(0, 140); }
+  function setReply(m) {
+    replyTo = m; var bar = $('replyBar'); bar.style.display = 'block'; clear(bar);
+    bar.appendChild(document.createTextNode('Replying to ' + (m.sender === 'expert' ? 'yourself' : 'farmer') + ': ' + previewText(m) + '  '));
+    var x = el('button', {cls:'rbtn', text:'cancel'}); x.onclick = clearReply; bar.appendChild(x);
+  }
+  function clearReply() { replyTo = null; $('replyBar').style.display = 'none'; }
+  function appendMsg(m) {
+    if (m.id && rendered[m.id]) return; rendered[m.id] = true;
+    var d = el('div', {cls:'msg ' + (m.sender === 'expert' ? 'expert' : 'farmer')}), who = m.sender === 'expert' ? 'You' : 'Farmer', text = m.text || '';
+    if (m.reply_preview) d.appendChild(el('div', {cls:'quote', text: (m.reply_preview.sender === 'expert' ? 'You' : 'Farmer') + ': ' + (m.reply_preview.type === 'audio_note' ? 'Voice note' : (m.reply_preview.text || ''))}));
+    var match = text.match(/^\[voice_note:([a-f0-9]{32}\.[a-z0-9]{3,4})\]$/);
+    if (m.type === 'audio_note' || match) {
+      d.appendChild(el('div', {text: who + ' - Voice note', style:'font-size:12px;opacity:.7'}));
+      if (match) { var a = el('audio', {controls:true, preload:'metadata'}); a.src = base() + '/v1/chat/voice/' + match[1]; d.appendChild(a); }
+    } else d.appendChild(document.createTextNode(who + ': ' + text));
+    var rb = el('button', {cls:'rbtn', text:'Reply'}); rb.onclick = function () { setReply(m); }; d.appendChild(rb);
+    var box = $('chatBox'); box.appendChild(d); box.scrollTop = box.scrollHeight;
+  }
+  async function loadChat() {
+    if (!cur) return;
+    try { var d = await api('/v1/chat/' + encodeURIComponent(cur.device_id) + '/' + encodeURIComponent(cur.expert_id)); (d.messages || []).forEach(appendMsg); }
+    catch (e) { note('chatMsg', e.message, false); }
+  }
+  async function loadThreads() {
+    try {
+      var d = await api('/v1/chat/threads'), ul = $('threadList'); clear(ul);
+      (d.items || []).forEach(function (th) {
+        var li = el('li', {text: 'Farmer ' + (th.device_id || '').slice(0, 8) + '...  (' + th.message_count + ')'});
+        li.onclick = function () { cur = th; rendered = {}; clear($('chatBox')); clearReply(); $('threadMeta').textContent = 'Chat - ' + th.device_id.slice(0, 8); loadChat(); if (poll) clearInterval(poll); poll = setInterval(loadChat, 3000); };
+        ul.appendChild(li);
+      });
+      if (!ul.children.length) ul.appendChild(el('li', {cls:'hint', text:'No conversations yet'}));
+    } catch (e) { note('chatMsg', e.message, false); }
+  }
+  $('btnThreads').onclick = loadThreads;
+  $('btnReply').onclick = async function () {
+    try {
+      var text = $('replyText').value.trim(); if (!text) return; if (!cur) throw new Error('Select a conversation');
+      await post('/v1/chat', {device_id: cur.device_id, expert_id: cur.expert_id, text: text, sender: 'expert', msg_type: 'text', client_id: 'px-' + Date.now(), reply_to: replyTo ? replyTo.id : null});
+      $('replyText').value = ''; clearReply(); loadChat();
+    } catch (e) { note('chatMsg', e.message, false); }
+  };
+  var rec = null, chunks = [], btn = $('btnRec');
+  btn.addEventListener('mousedown', async function (e) {
+    e.preventDefault(); if (!cur) return note('chatMsg', 'Select a conversation', false);
+    try {
+      chunks = []; var stream = await navigator.mediaDevices.getUserMedia({audio:true}); rec = new MediaRecorder(stream);
+      rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) chunks.push(ev.data); };
+      rec.onstop = async function () {
+        stream.getTracks().forEach(function (t) { t.stop(); }); btn.textContent = 'Hold to record';
+        var fd = new FormData(); fd.append('device_id', cur.device_id); fd.append('expert_id', cur.expert_id); fd.append('sender', 'expert');
+        fd.append('client_id', 'pv-' + Date.now()); if (replyTo) fd.append('reply_to', replyTo.id);
+        fd.append('audio', new Blob(chunks, {type:'audio/webm'}), 'note.webm');
+        try { await api('/v1/chat/voice', {method:'POST', body: fd}); clearReply(); loadChat(); } catch (err) { note('chatMsg', err.message, false); }
+      };
+      rec.start(); btn.textContent = 'Recording... release';
+    } catch (err) { note('chatMsg', 'Mic: ' + err.message, false); }
+  });
+  function stopRec() { if (rec && rec.state === 'recording') rec.stop(); }
+  btn.addEventListener('mouseup', stopRec); btn.addEventListener('mouseleave', stopRec);
+
+  loadDash();
+})();
+</script>
+</body>
+</html>

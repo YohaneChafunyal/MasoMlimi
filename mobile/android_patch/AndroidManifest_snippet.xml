@@ -1,0 +1,11 @@
+<!-- Inside <application ... > add: -->
+android:usesCleartextTraffic="true"
+
+<!-- Full example attribute on application tag: -->
+<!--
+<application
+    android:label="masomlimi_app"
+    android:name="${applicationName}"
+    android:icon="@mipmap/ic_launcher"
+    android:usesCleartextTraffic="true">
+-->

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MasoMlimi Expert Portal</title>
+  <style>
+    :root { --green: #1B8F4A; --greenDark: #0F6B36; --bg: #eef5ee; }
+    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 16px; background: var(--bg); }
+    .card { background: #fff; border-radius: 14px; padding: 16px; margin: 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    h1 { color: var(--greenDark); margin: 0; font-size: 1.25rem; }
+    h3 { color: var(--greenDark); margin-top: 0; }
+    label { display: block; font-weight: 600; font-size: 13px; margin: 10px 0 4px; }
+    input, select, textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 15px; box-sizing: border-box; }
+    textarea { min-height: 70px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media(max-width:600px){ .row { grid-template-columns: 1fr; } }
+    button { background: var(--green); color: #fff; border: 0; border-radius: 8px; padding: 12px 16px; font-weight: 600; cursor: pointer; margin: 8px 8px 0 0; }
+    button.secondary { background: #fff; color: var(--greenDark); border: 1px solid var(--green); }
+    .ok { color: #0F6B36; font-weight: 700; }
+    .err { color: #b71c1c; font-weight: 700; }
+    .hint { color: #666; font-size: 13px; }
+    .badge { background: #e8f5e9; padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+    .msg { padding: 8px 10px; margin: 6px 0; border-radius: 10px; background: #f5f5f5; max-width: 90%; }
+    .msg.expert { background: #dcfce7; margin-left: auto; }
+    .msg.farmer { background: #fff; border: 1px solid #e5e7eb; }
+    #chatBox { max-height: 280px; overflow-y: auto; border: 1px solid #eee; border-radius: 10px; padding: 8px; background: #fafafa; }
+    .tabs button { background: #fff; color: var(--greenDark); border: 1px solid #ccc; }
+    .tabs button.active { background: var(--green); color: #fff; border-color: var(--green); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>MasoMlimi Expert Portal</h1>
+    <p class="hint">Register real officers · Publish guidance · Reply to farmers</p>
+    <div class="tabs">
+      <button type="button" class="active" data-tab="proc">Procedures</button>
+      <button type="button" data-tab="experts">Officers</button>
+      <button type="button" data-tab="chat">Farmer chat</button>
+      <button type="button" data-tab="library">ML / reference library</button>
+    </div>
+  </div>
+
+  <div id="tab-proc">
+    <div class="card">
+      <h3>New procedure</h3>
+      <div class="row">
+        <div>
+          <label>Host</label>
+          <select id="host_key">
+            <option value="maize">Maize</option>
+            <option value="cassava">Cassava</option>
+            <option value="tomato">Tomato</option>
+            <option value="beans">Beans</option>
+            <option value="groundnuts">Groundnuts</option>
+            <option value="rice">Rice</option>
+            <option value="chicken">Chicken</option>
+            <option value="goats">Goats</option>
+            <option value="cattle">Cattle</option>
+          </select>
+        </div>
+        <div>
+          <label>Severity</label>
+          <select id="severity">
+            <option value="moderate">Moderate</option>
+            <option value="low">Low</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+      </div>
+      <label>Condition name *</label>
+      <input id="title_en" />
+      <label>Signs (one per line)</label>
+      <textarea id="signs"></textarea>
+      <label>Guidance steps *</label>
+      <textarea id="steps_en"></textarea>
+      <label>Prevention</label>
+      <textarea id="prevention_en"></textarea>
+      <button type="button" id="btnSave">Save draft</button>
+      <button type="button" id="btnSavePub">Save &amp; publish</button>
+      <p id="formMsg" class="hint"></p>
+    </div>
+    <div class="card">
+      <h3>Procedures</h3>
+      <button type="button" class="secondary" id="btnRefresh">Refresh</button>
+      <ul id="procs"></ul>
+    </div>
+  </div>
+
+  <div id="tab-experts" style="display:none">
+    <div class="card">
+      <h3>Register real officer</h3>
+      <p class="hint">Only names you register appear in the farmer app. No placeholder people.</p>
+      <label>Full name *</label>
+      <input id="ex_name" placeholder="e.g. Mary Chikondi" />
+      <div class="row">
+        <div>
+          <label>Role</label>
+          <select id="ex_role">
+            <option>Extension officer</option>
+            <option>Agronomist</option>
+            <option>Veterinary officer</option>
+            <option>District office</option>
+          </select>
+        </div>
+        <div>
+          <label>District</label>
+          <input id="ex_district" value="Lilongwe" />
+        </div>
+      </div>
+      <label>Phone (optional, E.164 e.g. +265…)</label>
+      <input id="ex_phone" placeholder="+265…" />
+      <button type="button" id="btnExSave">Save officer</button>
+      <p id="exMsg" class="hint"></p>
+    </div>
+    <div class="card">
+      <h3>Registered officers</h3>
+      <ul id="exList"></ul>
+    </div>
+  </div>
+
+  
+  <div id="tab-chat" style="display:none">
+    <div class="card" style="display:grid; grid-template-columns: 280px 1fr; gap: 12px; min-height: 420px;">
+      <div>
+        <h3>Conversations</h3>
+        <button type="button" class="secondary" id="btnThreads">Refresh</button>
+        <ul id="threadList" style="list-style:none; padding:0;"></ul>
+      </div>
+      <div style="display:flex; flex-direction:column;">
+        <h3 id="threadMeta">Select a conversation</h3>
+        <div id="chatBox" style="flex:1; max-height: 340px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:12px; padding:12px; background:#f9fafb;"></div>
+        <input type="hidden" id="replyExpertId" />
+        <input type="hidden" id="replyDeviceId" />
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <input id="replyText" placeholder="Message farmer…" style="flex:1" />
+          <button type="button" id="btnReply">Send</button>
+        </div>
+        <p id="chatMsg" class="hint"></p>
+        <p class="hint">Live: messages appear automatically while this tab is open.</p>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="tab-library" style="display:none">
+    <div class="card">
+      <h3>Upload reference files for scan / ML feed</h3>
+      <p class="hint">
+        Upload photos, PDFs or documents for a crop or animal. Add a condition label and signs so farmer scans
+        can match the best <strong>expert-published</strong> guidance. Files feed the district library and future ML training.
+        Text is extracted automatically into <strong>draft</strong> procedures (host, signs, prevention, treatment sections when present). You must review and <strong>Publish</strong> before farmers see it. Images help future ML; PDFs/docs teach the knowledge library.
+      </p>
+      <div class="row">
+        <div>
+          <label>Host (crop / animal) *</label>
+          <select id="lib_host">
+            <option value="maize">Maize</option>
+            <option value="cassava">Cassava</option>
+            <option value="tomato">Tomato</option>
+            <option value="beans">Beans</option>
+            <option value="groundnuts">Groundnuts</option>
+            <option value="rice">Rice</option>
+            <option value="chicken">Chicken</option>
+            <option value="goats">Goats</option>
+            <option value="cattle">Cattle</option>
+          </select>
+        </div>
+        <div>
+          <label>Type</label>
+          <select id="lib_org">
+            <option value="crop">Crop</option>
+            <option value="livestock">Livestock</option>
+          </select>
+        </div>
+      </div>
+      <label>Condition label (e.g. leaf spots)</label>
+      <input id="lib_condition" placeholder="Short name experts use" />
+      <label>Signs in these files</label>
+      <textarea id="lib_signs" placeholder="yellow leaves, holes, wilting"></textarea>
+      <label>Title</label>
+      <input id="lib_title" placeholder="Optional title" />
+      <label>Notes</label>
+      <textarea id="lib_notes"></textarea>
+      <label>Files (multiple images, PDF, docs)</label>
+      <input id="lib_files" type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt" />
+      <button type="button" id="btnLibUpload">Upload to library</button>
+      <p id="libMsg" class="hint"></p>
+    </div>
+    <div class="card">
+      <h3>Library items</h3>
+      <button type="button" class="secondary" id="btnLibRefresh">Refresh</button>
+      <ul id="libList"></ul>
+    </div>
+  </div>
+
+<script>
+function apiBase() {
+  if (location.port === '8000' || location.pathname.indexOf('/portal') === 0)
+    return location.protocol + '//' + location.host;
+  return 'http://127.0.0.1:8000';
+}
+function lines(id) {
+  return document.getElementById(id).value.split(/\n/).map(function(s){return s.trim();}).filter(Boolean);
+}
+function msg(el, html) { document.getElementById(el).innerHTML = html; }
+async function fetchT(url, opt, ms) {
+  ms = ms || 20000;
+  var c = new AbortController();
+  var t = setTimeout(function(){ c.abort(); }, ms);
+  opt = opt || {}; opt.signal = c.signal;
+  return fetch(url, opt).finally(function(){ clearTimeout(t); });
+}
+
+document.querySelectorAll('.tabs button').forEach(function(b) {
+  b.onclick = function() {
+    document.querySelectorAll('.tabs button').forEach(function(x){ x.classList.remove('active'); });
+    b.classList.add('active');
+    var tab = b.getAttribute('data-tab');
+    document.getElementById('tab-proc').style.display = tab === 'proc' ? '' : 'none';
+    document.getElementById('tab-experts').style.display = tab === 'experts' ? '' : 'none';
+    document.getElementById('tab-chat').style.display = tab === 'chat' ? '' : 'none';
+    document.getElementById('tab-library').style.display = tab === 'library' ? '' : 'none';
+    if (tab === 'experts') loadExperts();
+    if (tab === 'chat') loadThreads();
+    if (tab === 'library') loadLibrary();
+  };
+});
+
+async function saveDraft(pub) {
+  try {
+    var title = document.getElementById('title_en').value.trim();
+    var steps = lines('steps_en');
+    if (!title || !steps.length) throw new Error('Name and steps required');
+    var signs = lines('signs');
+    var prev = lines('prevention_en').concat(signs.map(function(s){ return 'Sign: ' + s; }));
+    var body = {
+      host_key: document.getElementById('host_key').value,
+      title: { en: title }, steps: { en: steps }, prevention_steps: { en: prev }, products: []
+    };
+    var res = await fetchT(apiBase() + '/v1/procedures', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data));
+    if (pub) {
+      var p = await fetchT(apiBase() + '/v1/procedures/' + data.id + '/publish', { method: 'POST' });
+      if (!p.ok) throw new Error('Publish failed');
+      msg('formMsg', '<span class="ok">Published</span>');
+    } else msg('formMsg', '<span class="ok">Draft saved</span>');
+    
+async function loadLibrary() {
+  try {
+    var data = await (await fetchT(apiBase() + '/v1/library')).json();
+    var ul = document.getElementById('libList');
+    ul.innerHTML = '';
+    (data.items || []).forEach(function(it) {
+      var li = document.createElement('li');
+      li.innerHTML = '<strong>' + (it.title || it.filename) + '</strong> · ' + it.host_key +
+        (it.condition_label ? ' · <em>' + it.condition_label + '</em>' : '') +
+        ' · ' + (it.filename || '') + ' (' + Math.round((it.size_bytes||0)/1024) + ' KB)';
+      ul.appendChild(li);
+    });
+    if (!(data.items || []).length) ul.innerHTML = '<li class="hint">No files yet</li>';
+  } catch (e) {
+    document.getElementById('libList').innerHTML = '<li class="err">Failed to load library</li>';
+  }
+}
+
+document.getElementById('btnLibUpload').onclick = async function() {
+  var input = document.getElementById('lib_files');
+  if (!input.files || !input.files.length) {
+    msg('libMsg', '<span class="err">Choose at least one file</span>');
+    return;
+  }
+  var fd = new FormData();
+  fd.append('host_key', document.getElementById('lib_host').value);
+  fd.append('organism_type', document.getElementById('lib_org').value);
+  fd.append('title', document.getElementById('lib_title').value);
+  fd.append('condition_label', document.getElementById('lib_condition').value);
+  fd.append('signs', document.getElementById('lib_signs').value);
+  fd.append('notes', document.getElementById('lib_notes').value);
+  fd.append('use_for_ml', 'true');
+  for (var i = 0; i < input.files.length; i++) {
+    fd.append('files', input.files[i]);
+  }
+  try {
+    msg('libMsg', 'Uploading…');
+    var res = await fetch(apiBase() + '/v1/library/upload', { method: 'POST', body: fd });
+    var data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data));
+    var d = (data.drafts_created || []).length;
+    msg('libMsg', '<span class="ok">Saved ' + data.saved + ' file(s). Auto-created ' + d +       ' DRAFT procedure(s) from file text. Review under Procedures, then Publish — farmers only see published content.</span>');
+    input.value = '';
+    loadLibrary();
+  } catch (e) {
+    msg('libMsg', '<span class="err">' + e.message + '</span>');
+  }
+};
+document.getElementById('btnLibRefresh').onclick = loadLibrary;
+
+refreshProcs();
+  } catch (e) { msg('formMsg', '<span class="err">' + e.message + '</span>'); }
+}
+
+async function refreshProcs() {
+  try {
+    var p = await (await fetchT(apiBase() + '/v1/procedures?drafts=true')).json();
+    var ul = document.getElementById('procs');
+    ul.innerHTML = '';
+    (p.items || []).forEach(function(item) {
+      var li = document.createElement('li');
+      var title = (item.title && item.title.en) || item.id;
+      li.innerHTML = '<span class="badge">' + item.status + '</span> <strong>' + title + '</strong> · ' + item.host_key + ' ';
+      if (item.status !== 'published') {
+        var btn = document.createElement('button');
+        btn.textContent = 'Publish';
+        btn.onclick = async function() {
+          await fetchT(apiBase() + '/v1/procedures/' + item.id + '/publish', { method: 'POST' });
+          
+async function loadLibrary() {
+  try {
+    var data = await (await fetchT(apiBase() + '/v1/library')).json();
+    var ul = document.getElementById('libList');
+    ul.innerHTML = '';
+    (data.items || []).forEach(function(it) {
+      var li = document.createElement('li');
+      li.innerHTML = '<strong>' + (it.title || it.filename) + '</strong> · ' + it.host_key +
+        (it.condition_label ? ' · <em>' + it.condition_label + '</em>' : '') +
+        ' · ' + (it.filename || '') + ' (' + Math.round((it.size_bytes||0)/1024) + ' KB)';
+      ul.appendChild(li);
+    });
+    if (!(data.items || []).length) ul.innerHTML = '<li class="hint">No files yet</li>';
+  } catch (e) {
+    document.getElementById('libList').innerHTML = '<li class="err">Failed to load library</li>';
+  }
+}
+
+document.getElementById('btnLibUpload').onclick = async function() {
+  var input = document.getElementById('lib_files');
+  if (!input.files || !input.files.length) {
+    msg('libMsg', '<span class="err">Choose at least one file</span>');
+    return;
+  }
+  var fd = new FormData();
+  fd.append('host_key', document.getElementById('lib_host').value);
+  fd.append('organism_type', document.getElementById('lib_org').value);
+  fd.append('title', document.getElementById('lib_title').value);
+  fd.append('condition_label', document.getElementById('lib_condition').value);
+  fd.append('signs', document.getElementById('lib_signs').value);
+  fd.append('notes', document.getElementById('lib_notes').value);
+  fd.append('use_for_ml', 'true');
+  for (var i = 0; i < input.files.length; i++) {
+    fd.append('files', input.files[i]);
+  }
+  try {
+    msg('libMsg', 'Uploading…');
+    var res = await fetch(apiBase() + '/v1/library/upload', { method: 'POST', body: fd });
+    var data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data));
+    var d = (data.drafts_created || []).length;
+    msg('libMsg', '<span class="ok">Saved ' + data.saved + ' file(s). Auto-created ' + d +       ' DRAFT procedure(s) from file text. Review under Procedures, then Publish — farmers only see published content.</span>');
+    input.value = '';
+    loadLibrary();
+  } catch (e) {
+    msg('libMsg', '<span class="err">' + e.message + '</span>');
+  }
+};
+document.getElementById('btnLibRefresh').onclick = loadLibrary;
+
+refreshProcs();
+        };
+        li.appendChild(btn);
+      }
+      ul.appendChild(li);
+    });
+  } catch (e) {}
+}
+
+async function loadExperts() {
+  try {
+    var list = await (await fetchT(apiBase() + '/v1/experts/?district=all')).json();
+    if (!Array.isArray(list)) list = [];
+    var ul = document.getElementById('exList');
+    ul.innerHTML = '';
+    if (!list.length) {
+      ul.innerHTML = '<li class="hint">No officers registered yet. Add real names above.</li>';
+      return;
+    }
+    list.forEach(function(e) {
+      var li = document.createElement('li');
+      li.innerHTML = '<strong>' + e.display_name + '</strong> · ' + e.role_label + ' · ' + e.district +
+        ' · id=<code>' + e.id + '</code>' + (e.phone_e164 ? ' · ' + e.phone_e164 : '');
+      ul.appendChild(li);
+    });
+  } catch (e) {
+    document.getElementById('exList').innerHTML = '<li class="err">Failed to load</li>';
+  }
+}
+
+document.getElementById('btnExSave').onclick = async function() {
+  try {
+    var body = {
+      display_name: document.getElementById('ex_name').value.trim(),
+      role_label: document.getElementById('ex_role').value,
+      district: document.getElementById('ex_district').value.trim() || 'Lilongwe',
+      phone_e164: document.getElementById('ex_phone').value.trim() || null
+    };
+    if (!body.display_name) throw new Error('Name required');
+    var res = await fetchT(apiBase() + '/v1/experts/', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data));
+    msg('exMsg', '<span class="ok">Saved. Id: ' + data.id + ' — farmers will see this name.</span>');
+    document.getElementById('ex_name').value = '';
+    loadExperts();
+  } catch (e) { msg('exMsg', '<span class="err">' + e.message + '</span>'); }
+};
+
+
+var currentThread = null;
+var chatPoll = null;
+var chatWs = null;
+
+function appendMsg(m) {
+  var box = document.getElementById('chatBox');
+  var d = document.createElement('div');
+  d.className = 'msg ' + (m.sender === 'expert' ? 'expert' : 'farmer');
+  d.textContent = (m.sender === 'expert' ? 'You: ' : 'Farmer: ') + m.text;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function connectLiveChat(deviceId, expertId) {
+  if (chatWs) { try { chatWs.close(); } catch(e) {} chatWs = null; }
+  if (chatPoll) { clearInterval(chatPoll); chatPoll = null; }
+  var base = apiBase().replace('http://', 'ws://').replace('https://', 'wss://');
+  try {
+    chatWs = new WebSocket(base + '/v1/ws/chat/' + deviceId + '/' + expertId);
+    chatWs.onmessage = function(ev) {
+      var data = JSON.parse(ev.data);
+      if (data.type === 'history') {
+        document.getElementById('chatBox').innerHTML = '';
+        (data.messages || []).forEach(appendMsg);
+      } else if (data.type === 'message' && data.message) {
+        appendMsg(data.message);
+      }
+    };
+    chatWs.onclose = function() {
+      // fallback poll every 2s
+      chatPoll = setInterval(function(){ loadChat(deviceId, expertId, true); }, 2000);
+    };
+  } catch (e) {
+    chatPoll = setInterval(function(){ loadChat(deviceId, expertId, true); }, 2000);
+  }
+}
+
+async function loadThreads() {
+  try {
+    var data = await (await fetchT(apiBase() + '/v1/chat/threads')).json();
+    var ul = document.getElementById('threadList');
+    ul.innerHTML = '';
+    (data.items || []).forEach(function(th) {
+      var li = document.createElement('li');
+      li.style.padding = '8px';
+      li.style.margin = '4px 0';
+      li.style.borderRadius = '8px';
+      li.style.cursor = 'pointer';
+      li.style.background = '#f3f4f6';
+      var last = th.last_message ? th.last_message.text : '(empty)';
+      li.innerHTML = '<strong>Farmer ' + (th.device_id || '').slice(0, 8) + '…</strong><br/><span class="hint">' + last + '</span>';
+      li.onclick = function() {
+        currentThread = th;
+        document.getElementById('replyExpertId').value = th.expert_id;
+        document.getElementById('replyDeviceId').value = th.device_id;
+        document.getElementById('threadMeta').textContent = 'Chat with farmer ' + (th.device_id || '').slice(0, 8);
+        document.getElementById('chatBox').innerHTML = '';
+        connectLiveChat(th.device_id, th.expert_id);
+      };
+      ul.appendChild(li);
+    });
+    if (!(data.items || []).length) ul.innerHTML = '<li class="hint">No conversations yet</li>';
+  } catch (e) {
+    document.getElementById('threadList').innerHTML = '<li class="err">Cannot load</li>';
+  }
+}
+
+async function loadChat(deviceId, expertId, soft) {
+  var data = await (await fetchT(apiBase() + '/v1/chat/' + deviceId + '/' + expertId)).json();
+  var box = document.getElementById('chatBox');
+  if (!soft) box.innerHTML = '';
+  else box.innerHTML = '';
+  (data.messages || []).forEach(appendMsg);
+}
+
+document.getElementById('btnReply').onclick = async function() {
+  try {
+    var text = document.getElementById('replyText').value.trim();
+    if (!text) return;
+    var deviceId = document.getElementById('replyDeviceId').value;
+    var expertId = document.getElementById('replyExpertId').value;
+    if (!deviceId || !expertId) throw new Error('Select a conversation');
+    if (chatWs && chatWs.readyState === 1) {
+      chatWs.send(JSON.stringify({ text: text, sender: 'expert', msg_type: 'text' }));
+      document.getElementById('replyText').value = '';
+      return;
+    }
+    var res = await fetchT(apiBase() + '/v1/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: deviceId, expert_id: expertId, text: text, sender: 'expert', msg_type: 'text' })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    document.getElementById('replyText').value = '';
+    loadChat(deviceId, expertId);
+  } catch (e) { msg('chatMsg', '<span class="err">' + e.message + '</span>'); }
+};
+
+document.getElementById('btnThreads').onclick = loadThreads;
+
+
+async function loadLibrary() {
+  try {
+    var data = await (await fetchT(apiBase() + '/v1/library')).json();
+    var ul = document.getElementById('libList');
+    ul.innerHTML = '';
+    (data.items || []).forEach(function(it) {
+      var li = document.createElement('li');
+      li.innerHTML = '<strong>' + (it.title || it.filename) + '</strong> · ' + it.host_key +
+        (it.condition_label ? ' · <em>' + it.condition_label + '</em>' : '') +
+        ' · ' + (it.filename || '') + ' (' + Math.round((it.size_bytes||0)/1024) + ' KB)';
+      ul.appendChild(li);
+    });
+    if (!(data.items || []).length) ul.innerHTML = '<li class="hint">No files yet</li>';
+  } catch (e) {
+    document.getElementById('libList').innerHTML = '<li class="err">Failed to load library</li>';
+  }
+}
+
+document.getElementById('btnLibUpload').onclick = async function() {
+  var input = document.getElementById('lib_files');
+  if (!input.files || !input.files.length) {
+    msg('libMsg', '<span class="err">Choose at least one file</span>');
+    return;
+  }
+  var fd = new FormData();
+  fd.append('host_key', document.getElementById('lib_host').value);
+  fd.append('organism_type', document.getElementById('lib_org').value);
+  fd.append('title', document.getElementById('lib_title').value);
+  fd.append('condition_label', document.getElementById('lib_condition').value);
+  fd.append('signs', document.getElementById('lib_signs').value);
+  fd.append('notes', document.getElementById('lib_notes').value);
+  fd.append('use_for_ml', 'true');
+  for (var i = 0; i < input.files.length; i++) {
+    fd.append('files', input.files[i]);
+  }
+  try {
+    msg('libMsg', 'Uploading…');
+    var res = await fetch(apiBase() + '/v1/library/upload', { method: 'POST', body: fd });
+    var data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data));
+    var d = (data.drafts_created || []).length;
+    msg('libMsg', '<span class="ok">Saved ' + data.saved + ' file(s). Auto-created ' + d +       ' DRAFT procedure(s) from file text. Review under Procedures, then Publish — farmers only see published content.</span>');
+    input.value = '';
+    loadLibrary();
+  } catch (e) {
+    msg('libMsg', '<span class="err">' + e.message + '</span>');
+  }
+};
+document.getElementById('btnLibRefresh').onclick = loadLibrary;
+
+refreshProcs();
+</script>
+</body>
+</html>

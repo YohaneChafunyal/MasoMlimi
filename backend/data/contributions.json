@@ -1,0 +1,62 @@
+[
+  {
+    "id": "5450cb1e-2096-43db-ba48-1ecdd148628f",
+    "at": "2026-10-22T11:56:14.946866+00:00",
+    "device_id": "c4d7cb54-1da2-471c-b1ea-3c1c4243265b",
+    "host_key": "this_images_is_for_tomatoes",
+    "host_label_farmer": "this_images_is_for_tomatoes",
+    "organism_type": "crop",
+    "language": "en",
+    "farmer_description": "it has a sign of like it was burnt",
+    "signs_reported": [],
+    "condition_guess": "",
+    "scan_outcome": "",
+    "status": "pending_expert_review",
+    "source": "farmer_post_scan_chat"
+  },
+  {
+    "id": "f2c060bc-426d-4d76-b736-69626bf7f16c",
+    "at": "2026-10-22T11:56:15.272236+00:00",
+    "device_id": "c4d7cb54-1da2-471c-b1ea-3c1c4243265b",
+    "host_key": "tomatoes",
+    "host_label_farmer": "tomatoes",
+    "organism_type": "crop",
+    "language": "en",
+    "farmer_description": "it shows like it was burnt with fire",
+    "signs_reported": [],
+    "condition_guess": "",
+    "scan_outcome": "",
+    "status": "pending_expert_review",
+    "source": "farmer_post_scan_chat"
+  },
+  {
+    "id": "dd50102b-9d95-4013-a963-67b32b0f397f",
+    "at": "2026-10-24T09:43:03.056173+00:00",
+    "device_id": "ae2f4f8e-d8e9-453c-a292-c42cc8402d97",
+    "host_key": "tomato",
+    "host_label_farmer": "tomato",
+    "organism_type": "crop",
+    "language": "en",
+    "farmer_description": "wilting",
+    "signs_reported": [],
+    "condition_guess": "",
+    "scan_outcome": "",
+    "status": "pending_expert_review",
+    "source": "farmer_post_scan_chat"
+  },
+  {
+    "id": "2245a06e-9e2a-40f5-a4ba-6ed63460cde9",
+    "at": "2026-10-24T09:43:03.120689+00:00",
+    "device_id": "ae2f4f8e-d8e9-453c-a292-c42cc8402d97",
+    "host_key": "maize",
+    "host_label_farmer": "maize",
+    "organism_type": "crop",
+    "language": "en",
+    "farmer_description": "spots",
+    "signs_reported": [],
+    "condition_guess": "",
+    "scan_outcome": "",
+    "status": "pending_expert_review",
+    "source": "farmer_post_scan_chat"
+  }
+]

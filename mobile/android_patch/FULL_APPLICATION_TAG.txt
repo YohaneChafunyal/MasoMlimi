@@ -1,0 +1,29 @@
+
+Open file:
+  android/app/src/main/AndroidManifest.xml
+
+Find the line starting with <application
+
+Change it to include usesCleartextTraffic like this:
+
+    <application
+        android:label="masomlimi_app"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
+
+Also ensure this permission exists ABOVE <application>:
+
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+
+Save the file.
+
+Then run:
+  flutter clean
+  flutter pub get
+  flutter run -d emulator-5554 --dart-define=API_BASE=http://10.0.2.2:8000
+
+On My Farm, tap "Test: load maize guidance from API".
+You must see JSON with "published_guidance" and "remove the affected plant".
+If the dialog says Cannot reach API, cleartext is still off or API is not on 0.0.0.0:8000.
